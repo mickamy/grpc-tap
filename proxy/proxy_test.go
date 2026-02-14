@@ -30,3 +30,27 @@ func TestCallType_String(t *testing.T) {
 		})
 	}
 }
+
+func TestProtocol_String(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		p    proxy.Protocol
+		want string
+	}{
+		{name: "gRPC", p: proxy.ProtocolGRPC, want: "gRPC"},
+		{name: "gRPC-Web", p: proxy.ProtocolGRPCWeb, want: "gRPC-Web"},
+		{name: "Connect", p: proxy.ProtocolConnect, want: "Connect"},
+		{name: "Unknown", p: proxy.Protocol(99), want: "UnknownProtocol(99)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := tt.p.String(); got != tt.want {
+				t.Errorf("Protocol.String() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

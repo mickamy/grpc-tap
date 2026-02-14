@@ -30,11 +30,33 @@ func (c CallType) String() string {
 	return fmt.Sprintf("UnknownCallType(%d)", c)
 }
 
+// Protocol represents the wire protocol detected from the request.
+type Protocol int32
+
+const (
+	ProtocolGRPC    Protocol = iota // Native gRPC (application/grpc)
+	ProtocolGRPCWeb                 // gRPC-Web (application/grpc-web)
+	ProtocolConnect                 // Connect protocol (application/proto, application/json, application/connect+*)
+)
+
+func (p Protocol) String() string {
+	switch p {
+	case ProtocolGRPC:
+		return "gRPC"
+	case ProtocolGRPCWeb:
+		return "gRPC-Web"
+	case ProtocolConnect:
+		return "Connect"
+	}
+	return fmt.Sprintf("UnknownProtocol(%d)", p)
+}
+
 // Event represents a captured gRPC call event.
 type Event struct {
 	ID        string
 	Method    string // Full method name, e.g. "/package.Service/Method"
 	CallType  CallType
+	Protocol  Protocol
 	StartTime time.Time
 	Duration  time.Duration
 	Status    int32  // gRPC status code (codes.Code)
