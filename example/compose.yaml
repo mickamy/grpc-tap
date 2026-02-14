@@ -1,0 +1,32 @@
+services:
+  echo-server:
+    image: golang:1.26
+    working_dir: /src
+    volumes:
+      - ..:/src
+    command: ["go", "run", "./example/server"]
+    ports:
+      - "9000:9000"
+
+  tapd:
+    image: golang:1.26
+    working_dir: /src
+    volumes:
+      - ..:/src
+    command: ["go", "run", "./cmd/grpc-tapd", "--listen=:8080", "--upstream=http://echo-server:9000", "--grpc=:9090"]
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    depends_on:
+      - echo-server
+
+  client:
+    image: golang:1.26
+    working_dir: /src
+    volumes:
+      - ..:/src
+    environment:
+      PROXY_ADDR: "http://tapd:8080"
+    command: ["go", "run", "./example/client"]
+    depends_on:
+      - tapd
