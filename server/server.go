@@ -82,6 +82,7 @@ func eventToProto(ev proxy.Event) *tapv1.GRPCEvent {
 		Duration:  durationpb.New(ev.Duration),
 		Status:    ev.Status,
 		Error:     ev.Error,
+		Protocol:  protocolToProto(ev.Protocol),
 	}
 }
 
@@ -97,5 +98,18 @@ func callTypeToProto(ct proxy.CallType) tapv1.CallType {
 		return tapv1.CallType_CALL_TYPE_BIDI_STREAM
 	default:
 		return tapv1.CallType_CALL_TYPE_UNSPECIFIED
+	}
+}
+
+func protocolToProto(p proxy.Protocol) tapv1.Protocol {
+	switch p {
+	case proxy.ProtocolGRPC:
+		return tapv1.Protocol_PROTOCOL_GRPC
+	case proxy.ProtocolGRPCWeb:
+		return tapv1.Protocol_PROTOCOL_GRPC_WEB
+	case proxy.ProtocolConnect:
+		return tapv1.Protocol_PROTOCOL_CONNECT
+	default:
+		return tapv1.Protocol_PROTOCOL_UNSPECIFIED
 	}
 }

@@ -13,6 +13,7 @@ message GRPCEvent {
   google.protobuf.Duration duration = 5;
   int32 status = 6;
   string error = 7;
+  Protocol protocol = 8;
 }
 
 enum CallType {
@@ -21,6 +22,13 @@ enum CallType {
   CALL_TYPE_SERVER_STREAM = 2;
   CALL_TYPE_CLIENT_STREAM = 3;
   CALL_TYPE_BIDI_STREAM = 4;
+}
+
+enum Protocol {
+  PROTOCOL_UNSPECIFIED = 0;
+  PROTOCOL_GRPC = 1;
+  PROTOCOL_GRPC_WEB = 2;
+  PROTOCOL_CONNECT = 3;
 }
 
 message WatchRequest {}

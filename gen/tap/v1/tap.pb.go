@@ -78,6 +78,58 @@ func (CallType) EnumDescriptor() ([]byte, []int) {
 	return file_tap_v1_tap_proto_rawDescGZIP(), []int{0}
 }
 
+type Protocol int32
+
+const (
+	Protocol_PROTOCOL_UNSPECIFIED Protocol = 0
+	Protocol_PROTOCOL_GRPC        Protocol = 1
+	Protocol_PROTOCOL_GRPC_WEB    Protocol = 2
+	Protocol_PROTOCOL_CONNECT     Protocol = 3
+)
+
+// Enum value maps for Protocol.
+var (
+	Protocol_name = map[int32]string{
+		0: "PROTOCOL_UNSPECIFIED",
+		1: "PROTOCOL_GRPC",
+		2: "PROTOCOL_GRPC_WEB",
+		3: "PROTOCOL_CONNECT",
+	}
+	Protocol_value = map[string]int32{
+		"PROTOCOL_UNSPECIFIED": 0,
+		"PROTOCOL_GRPC":        1,
+		"PROTOCOL_GRPC_WEB":    2,
+		"PROTOCOL_CONNECT":     3,
+	}
+)
+
+func (x Protocol) Enum() *Protocol {
+	p := new(Protocol)
+	*p = x
+	return p
+}
+
+func (x Protocol) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Protocol) Descriptor() protoreflect.EnumDescriptor {
+	return file_tap_v1_tap_proto_enumTypes[1].Descriptor()
+}
+
+func (Protocol) Type() protoreflect.EnumType {
+	return &file_tap_v1_tap_proto_enumTypes[1]
+}
+
+func (x Protocol) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Protocol.Descriptor instead.
+func (Protocol) EnumDescriptor() ([]byte, []int) {
+	return file_tap_v1_tap_proto_rawDescGZIP(), []int{1}
+}
+
 type GRPCEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -87,6 +139,7 @@ type GRPCEvent struct {
 	Duration      *durationpb.Duration   `protobuf:"bytes,5,opt,name=duration,proto3" json:"duration,omitempty"`
 	Status        int32                  `protobuf:"varint,6,opt,name=status,proto3" json:"status,omitempty"`
 	Error         string                 `protobuf:"bytes,7,opt,name=error,proto3" json:"error,omitempty"`
+	Protocol      Protocol               `protobuf:"varint,8,opt,name=protocol,proto3,enum=tap.v1.Protocol" json:"protocol,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -168,6 +221,13 @@ func (x *GRPCEvent) GetError() string {
 		return x.Error
 	}
 	return ""
+}
+
+func (x *GRPCEvent) GetProtocol() Protocol {
+	if x != nil {
+		return x.Protocol
+	}
+	return Protocol_PROTOCOL_UNSPECIFIED
 }
 
 type WatchRequest struct {
@@ -254,7 +314,7 @@ var File_tap_v1_tap_proto protoreflect.FileDescriptor
 
 const file_tap_v1_tap_proto_rawDesc = "" +
 	"\n" +
-	"\x10tap/v1/tap.proto\x12\x06tap.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\"\x82\x02\n" +
+	"\x10tap/v1/tap.proto\x12\x06tap.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\"\xb0\x02\n" +
 	"\tGRPCEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06method\x18\x02 \x01(\tR\x06method\x12-\n" +
@@ -263,7 +323,8 @@ const file_tap_v1_tap_proto_rawDesc = "" +
 	"start_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tstartTime\x125\n" +
 	"\bduration\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\bduration\x12\x16\n" +
 	"\x06status\x18\x06 \x01(\x05R\x06status\x12\x14\n" +
-	"\x05error\x18\a \x01(\tR\x05error\"\x0e\n" +
+	"\x05error\x18\a \x01(\tR\x05error\x12,\n" +
+	"\bprotocol\x18\b \x01(\x0e2\x10.tap.v1.ProtocolR\bprotocol\"\x0e\n" +
 	"\fWatchRequest\"8\n" +
 	"\rWatchResponse\x12'\n" +
 	"\x05event\x18\x01 \x01(\v2\x11.tap.v1.GRPCEventR\x05event*\x8f\x01\n" +
@@ -272,7 +333,12 @@ const file_tap_v1_tap_proto_rawDesc = "" +
 	"\x0fCALL_TYPE_UNARY\x10\x01\x12\x1b\n" +
 	"\x17CALL_TYPE_SERVER_STREAM\x10\x02\x12\x1b\n" +
 	"\x17CALL_TYPE_CLIENT_STREAM\x10\x03\x12\x19\n" +
-	"\x15CALL_TYPE_BIDI_STREAM\x10\x042D\n" +
+	"\x15CALL_TYPE_BIDI_STREAM\x10\x04*d\n" +
+	"\bProtocol\x12\x18\n" +
+	"\x14PROTOCOL_UNSPECIFIED\x10\x00\x12\x11\n" +
+	"\rPROTOCOL_GRPC\x10\x01\x12\x15\n" +
+	"\x11PROTOCOL_GRPC_WEB\x10\x02\x12\x14\n" +
+	"\x10PROTOCOL_CONNECT\x10\x032D\n" +
 	"\n" +
 	"TapService\x126\n" +
 	"\x05Watch\x12\x14.tap.v1.WatchRequest\x1a\x15.tap.v1.WatchResponse0\x01B}\n" +
@@ -291,28 +357,30 @@ func file_tap_v1_tap_proto_rawDescGZIP() []byte {
 	return file_tap_v1_tap_proto_rawDescData
 }
 
-var file_tap_v1_tap_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_tap_v1_tap_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_tap_v1_tap_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_tap_v1_tap_proto_goTypes = []any{
 	(CallType)(0),                 // 0: tap.v1.CallType
-	(*GRPCEvent)(nil),             // 1: tap.v1.GRPCEvent
-	(*WatchRequest)(nil),          // 2: tap.v1.WatchRequest
-	(*WatchResponse)(nil),         // 3: tap.v1.WatchResponse
-	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 5: google.protobuf.Duration
+	(Protocol)(0),                 // 1: tap.v1.Protocol
+	(*GRPCEvent)(nil),             // 2: tap.v1.GRPCEvent
+	(*WatchRequest)(nil),          // 3: tap.v1.WatchRequest
+	(*WatchResponse)(nil),         // 4: tap.v1.WatchResponse
+	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 6: google.protobuf.Duration
 }
 var file_tap_v1_tap_proto_depIdxs = []int32{
 	0, // 0: tap.v1.GRPCEvent.call_type:type_name -> tap.v1.CallType
-	4, // 1: tap.v1.GRPCEvent.start_time:type_name -> google.protobuf.Timestamp
-	5, // 2: tap.v1.GRPCEvent.duration:type_name -> google.protobuf.Duration
-	1, // 3: tap.v1.WatchResponse.event:type_name -> tap.v1.GRPCEvent
-	2, // 4: tap.v1.TapService.Watch:input_type -> tap.v1.WatchRequest
-	3, // 5: tap.v1.TapService.Watch:output_type -> tap.v1.WatchResponse
-	5, // [5:6] is the sub-list for method output_type
-	4, // [4:5] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 1: tap.v1.GRPCEvent.start_time:type_name -> google.protobuf.Timestamp
+	6, // 2: tap.v1.GRPCEvent.duration:type_name -> google.protobuf.Duration
+	1, // 3: tap.v1.GRPCEvent.protocol:type_name -> tap.v1.Protocol
+	2, // 4: tap.v1.WatchResponse.event:type_name -> tap.v1.GRPCEvent
+	3, // 5: tap.v1.TapService.Watch:input_type -> tap.v1.WatchRequest
+	4, // 6: tap.v1.TapService.Watch:output_type -> tap.v1.WatchResponse
+	6, // [6:7] is the sub-list for method output_type
+	5, // [5:6] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_tap_v1_tap_proto_init() }
@@ -325,7 +393,7 @@ func file_tap_v1_tap_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tap_v1_tap_proto_rawDesc), len(file_tap_v1_tap_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
