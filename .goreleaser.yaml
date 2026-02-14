@@ -1,0 +1,57 @@
+version: 2
+
+release:
+  mode: replace
+
+builds:
+  - id: grpc-tap
+    main: .
+    binary: grpc-tap
+    ldflags:
+      - -X main.version={{.Version}}
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+  - id: grpc-tapd
+    main: ./cmd/grpc-tapd
+    binary: grpc-tapd
+    ldflags:
+      - -X main.version={{.Version}}
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - ids:
+      - grpc-tap
+      - grpc-tapd
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+homebrew_casks:
+  - name: grpc-tap
+    homepage: https://github.com/mickamy/grpc-tap
+    description: Watch gRPC traffic in real-time with a TUI
+    binaries:
+      - grpc-tap
+      - grpc-tapd
+    hooks:
+      post:
+        install: |
+          system_command "/usr/bin/xattr",
+                         args: ["-dr", "com.apple.quarantine", "#{staged_path}"]
+    repository:
+      owner: mickamy
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+
+changelog:
+  sort: asc
