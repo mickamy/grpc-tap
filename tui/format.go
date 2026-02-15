@@ -3,6 +3,7 @@ package tui
 import (
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -171,6 +172,20 @@ func isPrintable(data []byte) bool {
 		}
 	}
 	return true
+}
+
+func formatHeaders(headers map[string]string) []string {
+	keys := make([]string, 0, len(headers))
+	for k := range headers {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	lines := make([]string, 0, len(keys))
+	for _, k := range keys {
+		lines = append(lines, k+": "+headers[k])
+	}
+	return lines
 }
 
 func protocolString(p int32) string {

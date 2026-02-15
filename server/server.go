@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -87,17 +89,32 @@ func (s *tapService) Replay(ctx context.Context, req *tapv1.ReplayRequest) (*tap
 
 func eventToProto(ev proxy.Event) *tapv1.GRPCEvent {
 	return &tapv1.GRPCEvent{
-		Id:           ev.ID,
-		Method:       ev.Method,
-		CallType:     callTypeToProto(ev.CallType),
-		StartTime:    timestamppb.New(ev.StartTime),
-		Duration:     durationpb.New(ev.Duration),
-		Status:       ev.Status,
-		Error:        ev.Error,
-		Protocol:     protocolToProto(ev.Protocol),
-		RequestBody:  ev.RequestBody,
-		ResponseBody: ev.ResponseBody,
+		Id:              ev.ID,
+		Method:          ev.Method,
+		CallType:        callTypeToProto(ev.CallType),
+		StartTime:       timestamppb.New(ev.StartTime),
+		Duration:        durationpb.New(ev.Duration),
+		Status:          ev.Status,
+		Error:           ev.Error,
+		Protocol:        protocolToProto(ev.Protocol),
+		RequestBody:     ev.RequestBody,
+		ResponseBody:    ev.ResponseBody,
+		RequestHeaders:  flattenHeaders(ev.RequestHeaders),
+		ResponseHeaders: flattenHeaders(ev.ResponseHeaders),
 	}
+}
+
+// flattenHeaders converts http.Header (multi-value) to map[string]string
+// by joining multiple values with ", ".
+func flattenHeaders(h http.Header) map[string]string {
+	if len(h) == 0 {
+		return nil
+	}
+	m := make(map[string]string, len(h))
+	for k, vs := range h {
+		m[k] = strings.Join(vs, ", ")
+	}
+	return m
 }
 
 func callTypeToProto(ct proxy.CallType) tapv1.CallType {

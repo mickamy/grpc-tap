@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 )
 
@@ -56,16 +57,18 @@ const MaxCaptureSize = 64 * 1024
 
 // Event represents a captured gRPC call event.
 type Event struct {
-	ID           string
-	Method       string // Full method name, e.g. "/package.Service/Method"
-	CallType     CallType
-	Protocol     Protocol
-	StartTime    time.Time
-	Duration     time.Duration
-	Status       int32  // gRPC status code (codes.Code)
-	Error        string // Error message, empty on success
-	RequestBody  []byte // Captured request body (up to MaxCaptureSize)
-	ResponseBody []byte // Captured response body (up to MaxCaptureSize)
+	ID              string
+	Method          string // Full method name, e.g. "/package.Service/Method"
+	CallType        CallType
+	Protocol        Protocol
+	StartTime       time.Time
+	Duration        time.Duration
+	Status          int32  // gRPC status code (codes.Code)
+	Error           string // Error message, empty on success
+	RequestHeaders  http.Header
+	ResponseHeaders http.Header
+	RequestBody     []byte // Captured request body (up to MaxCaptureSize)
+	ResponseBody    []byte // Captured response body (up to MaxCaptureSize)
 }
 
 // Proxy is the interface for gRPC reverse proxies.

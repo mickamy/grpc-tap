@@ -575,6 +575,16 @@ func (m Model) inspectLines(ev *tapv1.GRPCEvent) []string {
 	if ev.GetError() != "" {
 		lines = append(lines, "Error:    "+ev.GetError())
 	}
+	if len(ev.GetRequestHeaders()) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, "── Request Headers ──")
+		lines = append(lines, formatHeaders(ev.GetRequestHeaders())...)
+	}
+	if len(ev.GetResponseHeaders()) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, "── Response Headers ──")
+		lines = append(lines, formatHeaders(ev.GetResponseHeaders())...)
+	}
 	if len(ev.GetRequestBody()) > 0 {
 		lines = append(lines, "")
 		lines = append(lines, "── Request Body ──")

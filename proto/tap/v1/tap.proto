@@ -16,6 +16,8 @@ message GRPCEvent {
   Protocol protocol = 8;
   bytes request_body = 9;
   bytes response_body = 10;
+  map<string, string> request_headers = 11;
+  map<string, string> response_headers = 12;
 }
 
 enum CallType {

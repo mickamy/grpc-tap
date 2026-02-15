@@ -131,16 +131,18 @@ func (rp *ReverseProxy) Replay(ctx context.Context, method string, body []byte) 
 	respPayload := ExtractPayload(respData)
 
 	ev := Event{
-		ID:           uuid.New().String(),
-		Method:       method,
-		CallType:     Unary,
-		Protocol:     ProtocolGRPC,
-		StartTime:    start,
-		Duration:     time.Since(start),
-		Status:       status,
-		Error:        errMsg,
-		RequestBody:  body,
-		ResponseBody: respPayload,
+		ID:              uuid.New().String(),
+		Method:          method,
+		CallType:        Unary,
+		Protocol:        ProtocolGRPC,
+		StartTime:       start,
+		Duration:        time.Since(start),
+		Status:          status,
+		Error:           errMsg,
+		RequestHeaders:  req.Header.Clone(),
+		ResponseHeaders: resp.Header.Clone(),
+		RequestBody:     body,
+		ResponseBody:    respPayload,
 	}
 
 	// Publish to event channel (non-blocking).
@@ -243,16 +245,18 @@ func (rp *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rp.events <- Event{
-		ID:           uuid.New().String(),
-		Method:       method,
-		CallType:     DetectCallType(protocol, contentType, reqFrames, respFrames),
-		Protocol:     protocol,
-		StartTime:    start,
-		Duration:     time.Since(start),
-		Status:       status,
-		Error:        errMsg,
-		RequestBody:  capturedReq,
-		ResponseBody: capturedResp,
+		ID:              uuid.New().String(),
+		Method:          method,
+		CallType:        DetectCallType(protocol, contentType, reqFrames, respFrames),
+		Protocol:        protocol,
+		StartTime:       start,
+		Duration:        time.Since(start),
+		Status:          status,
+		Error:           errMsg,
+		RequestHeaders:  r.Header.Clone(),
+		ResponseHeaders: resp.Header.Clone(),
+		RequestBody:     capturedReq,
+		ResponseBody:    capturedResp,
 	}
 }
 

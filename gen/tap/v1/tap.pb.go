@@ -131,19 +131,21 @@ func (Protocol) EnumDescriptor() ([]byte, []int) {
 }
 
 type GRPCEvent struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Method        string                 `protobuf:"bytes,2,opt,name=method,proto3" json:"method,omitempty"`
-	CallType      CallType               `protobuf:"varint,3,opt,name=call_type,json=callType,proto3,enum=tap.v1.CallType" json:"call_type,omitempty"`
-	StartTime     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	Duration      *durationpb.Duration   `protobuf:"bytes,5,opt,name=duration,proto3" json:"duration,omitempty"`
-	Status        int32                  `protobuf:"varint,6,opt,name=status,proto3" json:"status,omitempty"`
-	Error         string                 `protobuf:"bytes,7,opt,name=error,proto3" json:"error,omitempty"`
-	Protocol      Protocol               `protobuf:"varint,8,opt,name=protocol,proto3,enum=tap.v1.Protocol" json:"protocol,omitempty"`
-	RequestBody   []byte                 `protobuf:"bytes,9,opt,name=request_body,json=requestBody,proto3" json:"request_body,omitempty"`
-	ResponseBody  []byte                 `protobuf:"bytes,10,opt,name=response_body,json=responseBody,proto3" json:"response_body,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Method          string                 `protobuf:"bytes,2,opt,name=method,proto3" json:"method,omitempty"`
+	CallType        CallType               `protobuf:"varint,3,opt,name=call_type,json=callType,proto3,enum=tap.v1.CallType" json:"call_type,omitempty"`
+	StartTime       *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	Duration        *durationpb.Duration   `protobuf:"bytes,5,opt,name=duration,proto3" json:"duration,omitempty"`
+	Status          int32                  `protobuf:"varint,6,opt,name=status,proto3" json:"status,omitempty"`
+	Error           string                 `protobuf:"bytes,7,opt,name=error,proto3" json:"error,omitempty"`
+	Protocol        Protocol               `protobuf:"varint,8,opt,name=protocol,proto3,enum=tap.v1.Protocol" json:"protocol,omitempty"`
+	RequestBody     []byte                 `protobuf:"bytes,9,opt,name=request_body,json=requestBody,proto3" json:"request_body,omitempty"`
+	ResponseBody    []byte                 `protobuf:"bytes,10,opt,name=response_body,json=responseBody,proto3" json:"response_body,omitempty"`
+	RequestHeaders  map[string]string      `protobuf:"bytes,11,rep,name=request_headers,json=requestHeaders,proto3" json:"request_headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ResponseHeaders map[string]string      `protobuf:"bytes,12,rep,name=response_headers,json=responseHeaders,proto3" json:"response_headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GRPCEvent) Reset() {
@@ -242,6 +244,20 @@ func (x *GRPCEvent) GetRequestBody() []byte {
 func (x *GRPCEvent) GetResponseBody() []byte {
 	if x != nil {
 		return x.ResponseBody
+	}
+	return nil
+}
+
+func (x *GRPCEvent) GetRequestHeaders() map[string]string {
+	if x != nil {
+		return x.RequestHeaders
+	}
+	return nil
+}
+
+func (x *GRPCEvent) GetResponseHeaders() map[string]string {
+	if x != nil {
+		return x.ResponseHeaders
 	}
 	return nil
 }
@@ -426,7 +442,7 @@ var File_tap_v1_tap_proto protoreflect.FileDescriptor
 
 const file_tap_v1_tap_proto_rawDesc = "" +
 	"\n" +
-	"\x10tap/v1/tap.proto\x12\x06tap.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\"\xf8\x02\n" +
+	"\x10tap/v1/tap.proto\x12\x06tap.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\"\xa2\x05\n" +
 	"\tGRPCEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06method\x18\x02 \x01(\tR\x06method\x12-\n" +
@@ -439,7 +455,15 @@ const file_tap_v1_tap_proto_rawDesc = "" +
 	"\bprotocol\x18\b \x01(\x0e2\x10.tap.v1.ProtocolR\bprotocol\x12!\n" +
 	"\frequest_body\x18\t \x01(\fR\vrequestBody\x12#\n" +
 	"\rresponse_body\x18\n" +
-	" \x01(\fR\fresponseBody\"\x0e\n" +
+	" \x01(\fR\fresponseBody\x12N\n" +
+	"\x0frequest_headers\x18\v \x03(\v2%.tap.v1.GRPCEvent.RequestHeadersEntryR\x0erequestHeaders\x12Q\n" +
+	"\x10response_headers\x18\f \x03(\v2&.tap.v1.GRPCEvent.ResponseHeadersEntryR\x0fresponseHeaders\x1aA\n" +
+	"\x13RequestHeadersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
+	"\x14ResponseHeadersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x0e\n" +
 	"\fWatchRequest\"8\n" +
 	"\rWatchResponse\x12'\n" +
 	"\x05event\x18\x01 \x01(\v2\x11.tap.v1.GRPCEventR\x05event\"J\n" +
@@ -479,7 +503,7 @@ func file_tap_v1_tap_proto_rawDescGZIP() []byte {
 }
 
 var file_tap_v1_tap_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_tap_v1_tap_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_tap_v1_tap_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_tap_v1_tap_proto_goTypes = []any{
 	(CallType)(0),                 // 0: tap.v1.CallType
 	(Protocol)(0),                 // 1: tap.v1.Protocol
@@ -488,25 +512,29 @@ var file_tap_v1_tap_proto_goTypes = []any{
 	(*WatchResponse)(nil),         // 4: tap.v1.WatchResponse
 	(*ReplayRequest)(nil),         // 5: tap.v1.ReplayRequest
 	(*ReplayResponse)(nil),        // 6: tap.v1.ReplayResponse
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 8: google.protobuf.Duration
+	nil,                           // 7: tap.v1.GRPCEvent.RequestHeadersEntry
+	nil,                           // 8: tap.v1.GRPCEvent.ResponseHeadersEntry
+	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 10: google.protobuf.Duration
 }
 var file_tap_v1_tap_proto_depIdxs = []int32{
-	0, // 0: tap.v1.GRPCEvent.call_type:type_name -> tap.v1.CallType
-	7, // 1: tap.v1.GRPCEvent.start_time:type_name -> google.protobuf.Timestamp
-	8, // 2: tap.v1.GRPCEvent.duration:type_name -> google.protobuf.Duration
-	1, // 3: tap.v1.GRPCEvent.protocol:type_name -> tap.v1.Protocol
-	2, // 4: tap.v1.WatchResponse.event:type_name -> tap.v1.GRPCEvent
-	2, // 5: tap.v1.ReplayResponse.event:type_name -> tap.v1.GRPCEvent
-	3, // 6: tap.v1.TapService.Watch:input_type -> tap.v1.WatchRequest
-	5, // 7: tap.v1.TapService.Replay:input_type -> tap.v1.ReplayRequest
-	4, // 8: tap.v1.TapService.Watch:output_type -> tap.v1.WatchResponse
-	6, // 9: tap.v1.TapService.Replay:output_type -> tap.v1.ReplayResponse
-	8, // [8:10] is the sub-list for method output_type
-	6, // [6:8] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	0,  // 0: tap.v1.GRPCEvent.call_type:type_name -> tap.v1.CallType
+	9,  // 1: tap.v1.GRPCEvent.start_time:type_name -> google.protobuf.Timestamp
+	10, // 2: tap.v1.GRPCEvent.duration:type_name -> google.protobuf.Duration
+	1,  // 3: tap.v1.GRPCEvent.protocol:type_name -> tap.v1.Protocol
+	7,  // 4: tap.v1.GRPCEvent.request_headers:type_name -> tap.v1.GRPCEvent.RequestHeadersEntry
+	8,  // 5: tap.v1.GRPCEvent.response_headers:type_name -> tap.v1.GRPCEvent.ResponseHeadersEntry
+	2,  // 6: tap.v1.WatchResponse.event:type_name -> tap.v1.GRPCEvent
+	2,  // 7: tap.v1.ReplayResponse.event:type_name -> tap.v1.GRPCEvent
+	3,  // 8: tap.v1.TapService.Watch:input_type -> tap.v1.WatchRequest
+	5,  // 9: tap.v1.TapService.Replay:input_type -> tap.v1.ReplayRequest
+	4,  // 10: tap.v1.TapService.Watch:output_type -> tap.v1.WatchResponse
+	6,  // 11: tap.v1.TapService.Replay:output_type -> tap.v1.ReplayResponse
+	10, // [10:12] is the sub-list for method output_type
+	8,  // [8:10] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_tap_v1_tap_proto_init() }
@@ -520,7 +548,7 @@ func file_tap_v1_tap_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tap_v1_tap_proto_rawDesc), len(file_tap_v1_tap_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
