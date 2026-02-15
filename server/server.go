@@ -75,14 +75,16 @@ func (s *tapService) Watch(_ *tapv1.WatchRequest, stream grpc.ServerStreamingSer
 
 func eventToProto(ev proxy.Event) *tapv1.GRPCEvent {
 	return &tapv1.GRPCEvent{
-		Id:        ev.ID,
-		Method:    ev.Method,
-		CallType:  callTypeToProto(ev.CallType),
-		StartTime: timestamppb.New(ev.StartTime),
-		Duration:  durationpb.New(ev.Duration),
-		Status:    ev.Status,
-		Error:     ev.Error,
-		Protocol:  protocolToProto(ev.Protocol),
+		Id:           ev.ID,
+		Method:       ev.Method,
+		CallType:     callTypeToProto(ev.CallType),
+		StartTime:    timestamppb.New(ev.StartTime),
+		Duration:     durationpb.New(ev.Duration),
+		Status:       ev.Status,
+		Error:        ev.Error,
+		Protocol:     protocolToProto(ev.Protocol),
+		RequestBody:  ev.RequestBody,
+		ResponseBody: ev.ResponseBody,
 	}
 }
 

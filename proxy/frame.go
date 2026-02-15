@@ -1,6 +1,8 @@
 package proxy
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/binary"
 	"io"
 )
@@ -93,6 +95,82 @@ func DetectCallType(protocol Protocol, contentType string, reqFrames, respFrames
 	default:
 		return BidiStream
 	}
+}
+
+// CaptureReader wraps an io.Reader and stores the first maxSize bytes
+// that pass through it.
+type CaptureReader struct {
+	r       io.Reader
+	buf     []byte
+	maxSize int
+}
+
+// NewCaptureReader creates a CaptureReader that captures up to maxSize bytes.
+func NewCaptureReader(r io.Reader, maxSize int) *CaptureReader {
+	return &CaptureReader{r: r, maxSize: maxSize}
+}
+
+func (cr *CaptureReader) Read(p []byte) (int, error) {
+	n, err := cr.r.Read(p)
+	if remaining := cr.maxSize - len(cr.buf); remaining > 0 && n > 0 {
+		take := n
+		if take > remaining {
+			take = remaining
+		}
+		cr.buf = append(cr.buf, p[:take]...)
+	}
+	return n, err
+}
+
+// Bytes returns the captured data.
+func (cr *CaptureReader) Bytes() []byte {
+	return cr.buf
+}
+
+// ExtractPayload parses the first gRPC length-prefixed frame and returns the
+// decompressed payload. If the data is not valid gRPC framing, it is returned
+// as-is.
+func ExtractPayload(data []byte) []byte {
+	if len(data) < 5 {
+		return data
+	}
+	compressed := data[0]
+	length := binary.BigEndian.Uint32(data[1:5])
+	if uint32(len(data)-5) < length {
+		return data
+	}
+	payload := data[5 : 5+length]
+	if compressed == 1 {
+		r, err := gzip.NewReader(bytes.NewReader(payload))
+		if err != nil {
+			return payload
+		}
+		decoded, err := io.ReadAll(r)
+		_ = r.Close()
+		if err != nil {
+			return payload
+		}
+		return decoded
+	}
+	return payload
+}
+
+// DecompressGzip decompresses data if it starts with a gzip magic header.
+// Returns the original data unchanged if it is not gzip.
+func DecompressGzip(data []byte) []byte {
+	if len(data) < 2 || data[0] != 0x1f || data[1] != 0x8b {
+		return data
+	}
+	r, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return data
+	}
+	decoded, err := io.ReadAll(r)
+	_ = r.Close()
+	if err != nil {
+		return data
+	}
+	return decoded
 }
 
 func hasPrefix(s, prefix string) bool {

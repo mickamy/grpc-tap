@@ -2,6 +2,7 @@ package proxy_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/binary"
 	"io"
 	"testing"
@@ -84,6 +85,114 @@ func TestFrameCounter_EmptyPayload(t *testing.T) {
 	if fc.Count != 1 {
 		t.Errorf("Count = %d, want 1", fc.Count)
 	}
+}
+
+func TestCaptureReader(t *testing.T) {
+	t.Parallel()
+
+	t.Run("captures all bytes within limit", func(t *testing.T) {
+		t.Parallel()
+
+		data := bytes.Repeat([]byte("a"), 100)
+		cr := proxy.NewCaptureReader(bytes.NewReader(data), 256)
+		got, err := io.ReadAll(cr)
+		if err != nil {
+			t.Fatalf("ReadAll: %v", err)
+		}
+		if !bytes.Equal(got, data) {
+			t.Errorf("passthrough: got %d bytes, want %d", len(got), len(data))
+		}
+		if !bytes.Equal(cr.Bytes(), data) {
+			t.Errorf("captured: got %d bytes, want %d", len(cr.Bytes()), len(data))
+		}
+	})
+
+	t.Run("truncates at max size", func(t *testing.T) {
+		t.Parallel()
+
+		data := bytes.Repeat([]byte("b"), 200)
+		cr := proxy.NewCaptureReader(bytes.NewReader(data), 50)
+		got, err := io.ReadAll(cr)
+		if err != nil {
+			t.Fatalf("ReadAll: %v", err)
+		}
+		if len(got) != 200 {
+			t.Errorf("passthrough: got %d bytes, want 200", len(got))
+		}
+		if len(cr.Bytes()) != 50 {
+			t.Errorf("captured: got %d bytes, want 50", len(cr.Bytes()))
+		}
+	})
+
+	t.Run("empty reader", func(t *testing.T) {
+		t.Parallel()
+
+		cr := proxy.NewCaptureReader(bytes.NewReader(nil), 256)
+		if _, err := io.ReadAll(cr); err != nil {
+			t.Fatalf("ReadAll: %v", err)
+		}
+		if len(cr.Bytes()) != 0 {
+			t.Errorf("captured: got %d bytes, want 0", len(cr.Bytes()))
+		}
+	})
+}
+
+func TestExtractPayload(t *testing.T) {
+	t.Parallel()
+
+	t.Run("uncompressed", func(t *testing.T) {
+		t.Parallel()
+
+		payload := []byte("hello world")
+		frame := buildGRPCFrame(payload)
+		got := proxy.ExtractPayload(frame)
+		if !bytes.Equal(got, payload) {
+			t.Errorf("got %q, want %q", got, payload)
+		}
+	})
+
+	t.Run("gzip compressed", func(t *testing.T) {
+		t.Parallel()
+
+		payload := []byte("compressed payload")
+		var compressed bytes.Buffer
+		w := gzip.NewWriter(&compressed)
+		_, _ = w.Write(payload)
+		_ = w.Close()
+
+		// Build frame with compression flag = 1
+		var frame bytes.Buffer
+		frame.WriteByte(1) // compressed
+		length := make([]byte, 4)
+		binary.BigEndian.PutUint32(length, uint32(compressed.Len()))
+		frame.Write(length)
+		frame.Write(compressed.Bytes())
+
+		got := proxy.ExtractPayload(frame.Bytes())
+		if !bytes.Equal(got, payload) {
+			t.Errorf("got %q, want %q", got, payload)
+		}
+	})
+
+	t.Run("too short", func(t *testing.T) {
+		t.Parallel()
+
+		data := []byte{0, 1, 2}
+		got := proxy.ExtractPayload(data)
+		if !bytes.Equal(got, data) {
+			t.Errorf("got %q, want %q", got, data)
+		}
+	})
+
+	t.Run("empty payload", func(t *testing.T) {
+		t.Parallel()
+
+		frame := buildGRPCFrame(nil)
+		got := proxy.ExtractPayload(frame)
+		if len(got) != 0 {
+			t.Errorf("got %d bytes, want 0", len(got))
+		}
+	})
 }
 
 func TestDetectCallType(t *testing.T) {

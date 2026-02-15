@@ -1,11 +1,14 @@
 package tui
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -91,6 +94,83 @@ func statusString(status int32) string {
 		return "OK"
 	}
 	return fmt.Sprintf("ERR(%d)", status)
+}
+
+func formatBody(data []byte) []string {
+	if lines := decodeProtoWire(data, ""); lines != nil {
+		return lines
+	}
+	if utf8.Valid(data) {
+		s := strings.TrimSpace(string(data))
+		return strings.Split(s, "\n")
+	}
+	dump := hex.Dump(data)
+	return strings.Split(strings.TrimRight(dump, "\n"), "\n")
+}
+
+func decodeProtoWire(data []byte, indent string) []string {
+	if len(data) == 0 {
+		return nil
+	}
+	var lines []string
+	for len(data) > 0 {
+		num, wtype, n := protowire.ConsumeTag(data)
+		if n < 0 {
+			return nil
+		}
+		data = data[n:]
+		switch wtype {
+		case protowire.VarintType:
+			v, n := protowire.ConsumeVarint(data)
+			if n < 0 {
+				return nil
+			}
+			data = data[n:]
+			lines = append(lines, fmt.Sprintf("%s%d: %d", indent, num, v))
+		case protowire.Fixed32Type:
+			v, n := protowire.ConsumeFixed32(data)
+			if n < 0 {
+				return nil
+			}
+			data = data[n:]
+			lines = append(lines, fmt.Sprintf("%s%d: %d", indent, num, v))
+		case protowire.Fixed64Type:
+			v, n := protowire.ConsumeFixed64(data)
+			if n < 0 {
+				return nil
+			}
+			data = data[n:]
+			lines = append(lines, fmt.Sprintf("%s%d: %d", indent, num, v))
+		case protowire.BytesType:
+			v, n := protowire.ConsumeBytes(data)
+			if n < 0 {
+				return nil
+			}
+			data = data[n:]
+			// Try nested message first
+			if nested := decodeProtoWire(v, indent+"  "); nested != nil {
+				lines = append(lines, fmt.Sprintf("%s%d: {", indent, num))
+				lines = append(lines, nested...)
+				lines = append(lines, indent+"}")
+			} else if utf8.Valid(v) && isPrintable(v) {
+				lines = append(lines, fmt.Sprintf("%s%d: %q", indent, num, string(v)))
+			} else {
+				lines = append(lines, fmt.Sprintf("%s%d: %x", indent, num, v))
+			}
+		default:
+			return nil
+		}
+	}
+	return lines
+}
+
+func isPrintable(data []byte) bool {
+	for _, b := range data {
+		if b < 0x20 && b != '\n' && b != '\r' && b != '\t' {
+			return false
+		}
+	}
+	return true
 }
 
 func protocolString(p int32) string {

@@ -97,11 +97,12 @@ func (rp *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
 	method := r.URL.Path
 
-	// Wrap request body for frame counting (gRPC/gRPC-Web).
+	// Wrap request body for capture and frame counting.
+	reqCapture := NewCaptureReader(r.Body, MaxCaptureSize)
 	var reqFrames *FrameCounter
-	body := io.Reader(r.Body)
+	body := io.Reader(reqCapture)
 	if protocol == ProtocolGRPC || protocol == ProtocolGRPCWeb {
-		reqFrames = NewFrameCounter(r.Body)
+		reqFrames = NewFrameCounter(reqCapture)
 		body = reqFrames
 	}
 
@@ -134,11 +135,12 @@ func (rp *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(resp.StatusCode)
 
-	// Wrap response body for frame counting (gRPC/gRPC-Web).
+	// Wrap response body for capture and frame counting.
+	respCapture := NewCaptureReader(resp.Body, MaxCaptureSize)
 	var respFrames *FrameCounter
-	respBody := io.Reader(resp.Body)
+	respBody := io.Reader(respCapture)
 	if protocol == ProtocolGRPC || protocol == ProtocolGRPCWeb {
-		respFrames = NewFrameCounter(resp.Body)
+		respFrames = NewFrameCounter(respCapture)
 		respBody = respFrames
 	}
 
@@ -168,15 +170,27 @@ func (rp *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Emit event.
 	status, errMsg := ExtractStatus(protocol, resp)
+	capturedReq := reqCapture.Bytes()
+	capturedResp := respCapture.Bytes()
+	if protocol == ProtocolGRPC || protocol == ProtocolGRPCWeb {
+		capturedReq = ExtractPayload(capturedReq)
+		capturedResp = ExtractPayload(capturedResp)
+	} else {
+		capturedReq = DecompressGzip(capturedReq)
+		capturedResp = DecompressGzip(capturedResp)
+	}
+
 	rp.events <- Event{
-		ID:        uuid.New().String(),
-		Method:    method,
-		CallType:  DetectCallType(protocol, contentType, reqFrames, respFrames),
-		Protocol:  protocol,
-		StartTime: start,
-		Duration:  time.Since(start),
-		Status:    status,
-		Error:     errMsg,
+		ID:           uuid.New().String(),
+		Method:       method,
+		CallType:     DetectCallType(protocol, contentType, reqFrames, respFrames),
+		Protocol:     protocol,
+		StartTime:    start,
+		Duration:     time.Since(start),
+		Status:       status,
+		Error:        errMsg,
+		RequestBody:  capturedReq,
+		ResponseBody: capturedResp,
 	}
 }
 

@@ -140,6 +140,8 @@ type GRPCEvent struct {
 	Status        int32                  `protobuf:"varint,6,opt,name=status,proto3" json:"status,omitempty"`
 	Error         string                 `protobuf:"bytes,7,opt,name=error,proto3" json:"error,omitempty"`
 	Protocol      Protocol               `protobuf:"varint,8,opt,name=protocol,proto3,enum=tap.v1.Protocol" json:"protocol,omitempty"`
+	RequestBody   []byte                 `protobuf:"bytes,9,opt,name=request_body,json=requestBody,proto3" json:"request_body,omitempty"`
+	ResponseBody  []byte                 `protobuf:"bytes,10,opt,name=response_body,json=responseBody,proto3" json:"response_body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -230,6 +232,20 @@ func (x *GRPCEvent) GetProtocol() Protocol {
 	return Protocol_PROTOCOL_UNSPECIFIED
 }
 
+func (x *GRPCEvent) GetRequestBody() []byte {
+	if x != nil {
+		return x.RequestBody
+	}
+	return nil
+}
+
+func (x *GRPCEvent) GetResponseBody() []byte {
+	if x != nil {
+		return x.ResponseBody
+	}
+	return nil
+}
+
 type WatchRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -314,7 +330,7 @@ var File_tap_v1_tap_proto protoreflect.FileDescriptor
 
 const file_tap_v1_tap_proto_rawDesc = "" +
 	"\n" +
-	"\x10tap/v1/tap.proto\x12\x06tap.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\"\xb0\x02\n" +
+	"\x10tap/v1/tap.proto\x12\x06tap.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\"\xf8\x02\n" +
 	"\tGRPCEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06method\x18\x02 \x01(\tR\x06method\x12-\n" +
@@ -324,7 +340,10 @@ const file_tap_v1_tap_proto_rawDesc = "" +
 	"\bduration\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\bduration\x12\x16\n" +
 	"\x06status\x18\x06 \x01(\x05R\x06status\x12\x14\n" +
 	"\x05error\x18\a \x01(\tR\x05error\x12,\n" +
-	"\bprotocol\x18\b \x01(\x0e2\x10.tap.v1.ProtocolR\bprotocol\"\x0e\n" +
+	"\bprotocol\x18\b \x01(\x0e2\x10.tap.v1.ProtocolR\bprotocol\x12!\n" +
+	"\frequest_body\x18\t \x01(\fR\vrequestBody\x12#\n" +
+	"\rresponse_body\x18\n" +
+	" \x01(\fR\fresponseBody\"\x0e\n" +
 	"\fWatchRequest\"8\n" +
 	"\rWatchResponse\x12'\n" +
 	"\x05event\x18\x01 \x01(\v2\x11.tap.v1.GRPCEventR\x05event*\x8f\x01\n" +
