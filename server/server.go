@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net"
 
@@ -18,10 +19,10 @@ type Server struct {
 	grpcServer *grpc.Server
 }
 
-// New creates a new Server backed by the given Broker.
-func New(b *broker.Broker) *Server {
+// New creates a new Server backed by the given Broker and Proxy.
+func New(b *broker.Broker, p proxy.Proxy) *Server {
 	gs := grpc.NewServer()
-	svc := &tapService{broker: b}
+	svc := &tapService{broker: b, proxy: p}
 	tapv1.RegisterTapServiceServer(gs, svc)
 
 	return &Server{grpcServer: gs}
@@ -49,6 +50,7 @@ type tapService struct {
 	tapv1.UnimplementedTapServiceServer
 
 	broker *broker.Broker
+	proxy  proxy.Proxy
 }
 
 func (s *tapService) Watch(_ *tapv1.WatchRequest, stream grpc.ServerStreamingServer[tapv1.WatchResponse]) error {
@@ -71,6 +73,16 @@ func (s *tapService) Watch(_ *tapv1.WatchRequest, stream grpc.ServerStreamingSer
 			}
 		}
 	}
+}
+
+func (s *tapService) Replay(ctx context.Context, req *tapv1.ReplayRequest) (*tapv1.ReplayResponse, error) {
+	ev, err := s.proxy.Replay(ctx, req.GetMethod(), req.GetRequestBody())
+	if err != nil {
+		return nil, fmt.Errorf("server: replay: %w", err)
+	}
+	return &tapv1.ReplayResponse{
+		Event: eventToProto(ev),
+	}, nil
 }
 
 func eventToProto(ev proxy.Event) *tapv1.GRPCEvent {

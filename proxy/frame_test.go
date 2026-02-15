@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"encoding/json"
 	"io"
 	"testing"
 
 	"github.com/mickamy/grpc-tap/proxy"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 func buildGRPCFrame(payload []byte) []byte {
@@ -266,4 +268,166 @@ func TestDetectCallType(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProtoWireToJSON(t *testing.T) {
+	t.Parallel()
+
+	t.Run("string field", func(t *testing.T) {
+		t.Parallel()
+		// field 1 = "hello"
+		var wire []byte
+		wire = protowire.AppendTag(wire, 1, protowire.BytesType)
+		wire = protowire.AppendString(wire, "hello")
+
+		got, err := proxy.ProtoWireToJSON(wire)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var m map[string]any
+		if err := json.Unmarshal(got, &m); err != nil {
+			t.Fatal(err)
+		}
+		if m["1"] != "hello" {
+			t.Errorf("field 1 = %v, want %q", m["1"], "hello")
+		}
+	})
+
+	t.Run("varint field", func(t *testing.T) {
+		t.Parallel()
+		var wire []byte
+		wire = protowire.AppendTag(wire, 2, protowire.VarintType)
+		wire = protowire.AppendVarint(wire, 42)
+
+		got, err := proxy.ProtoWireToJSON(wire)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var m map[string]any
+		if err := json.Unmarshal(got, &m); err != nil {
+			t.Fatal(err)
+		}
+		if m["2"] != float64(42) {
+			t.Errorf("field 2 = %v, want 42", m["2"])
+		}
+	})
+
+	t.Run("multiple fields", func(t *testing.T) {
+		t.Parallel()
+		var wire []byte
+		wire = protowire.AppendTag(wire, 1, protowire.BytesType)
+		wire = protowire.AppendString(wire, "hello")
+		wire = protowire.AppendTag(wire, 2, protowire.VarintType)
+		wire = protowire.AppendVarint(wire, 99)
+
+		got, err := proxy.ProtoWireToJSON(wire)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var m map[string]any
+		if err := json.Unmarshal(got, &m); err != nil {
+			t.Fatal(err)
+		}
+		if m["1"] != "hello" {
+			t.Errorf("field 1 = %v, want %q", m["1"], "hello")
+		}
+		if m["2"] != float64(99) {
+			t.Errorf("field 2 = %v, want 99", m["2"])
+		}
+	})
+
+	t.Run("empty data", func(t *testing.T) {
+		t.Parallel()
+		got, err := proxy.ProtoWireToJSON(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var m map[string]any
+		if err := json.Unmarshal(got, &m); err != nil {
+			t.Fatal(err)
+		}
+		if len(m) != 0 {
+			t.Errorf("expected empty map, got %v", m)
+		}
+	})
+}
+
+func TestJSONToProtoWire(t *testing.T) {
+	t.Parallel()
+
+	t.Run("string field", func(t *testing.T) {
+		t.Parallel()
+		j := []byte(`{"1": "hello"}`)
+		wire, err := proxy.JSONToProtoWire(j)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Parse the wire format
+		num, wtype, n := protowire.ConsumeTag(wire)
+		if n < 0 {
+			t.Fatal("invalid tag")
+		}
+		if num != 1 || wtype != protowire.BytesType {
+			t.Fatalf("tag: num=%d type=%d", num, wtype)
+		}
+		v, n := protowire.ConsumeBytes(wire[n:])
+		if n < 0 {
+			t.Fatal("invalid bytes")
+		}
+		if string(v) != "hello" {
+			t.Errorf("got %q, want %q", v, "hello")
+		}
+	})
+
+	t.Run("integer field", func(t *testing.T) {
+		t.Parallel()
+		j := []byte(`{"2": 42}`)
+		wire, err := proxy.JSONToProtoWire(j)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		num, wtype, n := protowire.ConsumeTag(wire)
+		if n < 0 {
+			t.Fatal("invalid tag")
+		}
+		if num != 2 || wtype != protowire.VarintType {
+			t.Fatalf("tag: num=%d type=%d", num, wtype)
+		}
+		v, n := protowire.ConsumeVarint(wire[n:])
+		if n < 0 {
+			t.Fatal("invalid varint")
+		}
+		if v != 42 {
+			t.Errorf("got %d, want 42", v)
+		}
+	})
+
+	t.Run("roundtrip", func(t *testing.T) {
+		t.Parallel()
+		// Build original wire: field 1 = "world", field 2 = 123
+		var original []byte
+		original = protowire.AppendTag(original, 1, protowire.BytesType)
+		original = protowire.AppendString(original, "world")
+		original = protowire.AppendTag(original, 2, protowire.VarintType)
+		original = protowire.AppendVarint(original, 123)
+
+		// Wire → JSON → Wire
+		j, err := proxy.ProtoWireToJSON(original)
+		if err != nil {
+			t.Fatal(err)
+		}
+		roundtripped, err := proxy.JSONToProtoWire(j)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !bytes.Equal(original, roundtripped) {
+			t.Errorf("roundtrip failed:\n  original:     %x\n  roundtripped: %x", original, roundtripped)
+		}
+	})
 }

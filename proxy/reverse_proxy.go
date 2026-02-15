@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -88,6 +89,67 @@ func (rp *ReverseProxy) Events() <-chan Event {
 // Close stops the proxy.
 func (rp *ReverseProxy) Close() error {
 	return rp.server.Close()
+}
+
+// Replay sends a gRPC unary request to the upstream server and returns the
+// resulting event. The body should be raw protobuf bytes (without gRPC framing).
+// The event is also published to the events channel.
+func (rp *ReverseProxy) Replay(ctx context.Context, method string, body []byte) (Event, error) {
+	start := time.Now()
+
+	// Wrap body in gRPC length-prefixed frame.
+	frame := make([]byte, 5+len(body))
+	frame[0] = 0 // no compression
+	frame[1] = byte(len(body) >> 24)
+	frame[2] = byte(len(body) >> 16)
+	frame[3] = byte(len(body) >> 8)
+	frame[4] = byte(len(body))
+	copy(frame[5:], body)
+
+	upstreamURL := *rp.upstream
+	upstreamURL.Path = method
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, upstreamURL.String(), io.NopCloser(bytes.NewReader(frame)))
+	if err != nil {
+		return Event{}, fmt.Errorf("replay: build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/grpc")
+	req.Header.Set("TE", "trailers")
+
+	resp, err := rp.transport.RoundTrip(req)
+	if err != nil {
+		return Event{}, fmt.Errorf("replay: roundtrip: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	respData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Event{}, fmt.Errorf("replay: read response: %w", err)
+	}
+
+	status, errMsg := extractGRPCStatus(resp)
+	respPayload := ExtractPayload(respData)
+
+	ev := Event{
+		ID:           uuid.New().String(),
+		Method:       method,
+		CallType:     Unary,
+		Protocol:     ProtocolGRPC,
+		StartTime:    start,
+		Duration:     time.Since(start),
+		Status:       status,
+		Error:        errMsg,
+		RequestBody:  body,
+		ResponseBody: respPayload,
+	}
+
+	// Publish to event channel (non-blocking).
+	select {
+	case rp.events <- ev:
+	default:
+	}
+
+	return ev, nil
 }
 
 // ServeHTTP handles each proxied request.

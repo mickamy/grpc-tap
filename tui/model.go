@@ -3,6 +3,8 @@ package tui
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -13,6 +15,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	tapv1 "github.com/mickamy/grpc-tap/gen/tap/v1"
+	"github.com/mickamy/grpc-tap/proxy"
 )
 
 type viewMode int
@@ -34,6 +37,7 @@ const (
 type Model struct {
 	target string
 	conn   *grpc.ClientConn
+	client tapv1.TapServiceClient
 	stream tapv1.TapService_WatchClient
 
 	events []*tapv1.GRPCEvent
@@ -52,6 +56,7 @@ type Model struct {
 	displayRows []int // indices into events
 
 	inspectScroll int
+	replayEventID string // when set, navigate to this event in inspector on arrival
 
 	analyticsRows     []analyticsRow
 	analyticsCursor   int
@@ -63,7 +68,13 @@ type errMsg struct{ Err error }
 
 type connectedMsg struct {
 	conn   *grpc.ClientConn
+	client tapv1.TapServiceClient
 	stream tapv1.TapService_WatchClient
+}
+
+type replayResultMsg struct {
+	EventID string // ID of the replayed event (empty on error)
+	Err     error
 }
 
 // New creates a new Model targeting the given grpc-tapd address.
@@ -90,7 +101,7 @@ func connectCmd(target string) tea.Cmd {
 			_ = conn.Close()
 			return errMsg{Err: fmt.Errorf("watch %s: %w", target, err)}
 		}
-		return connectedMsg{conn: conn, stream: stream}
+		return connectedMsg{conn: conn, client: client, stream: stream}
 	}
 }
 
@@ -108,18 +119,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case connectedMsg:
 		m.conn = msg.conn
+		m.client = msg.client
 		m.stream = msg.stream
 		return m, recvEvent(msg.stream)
 
 	case eventMsg:
 		m.events = append(m.events, msg.Event)
-		if m.view == viewList {
+		if m.replayEventID != "" && msg.Event.GetId() == m.replayEventID {
+			// Replayed event arrived — show it in inspector.
+			m.replayEventID = ""
+			m.displayRows = m.rebuildDisplayRows()
+			m.cursor = max(len(m.displayRows)-1, 0)
+			m.view = viewInspect
+			m.inspectScroll = 0
+		} else if m.view == viewList {
 			m.displayRows = m.rebuildDisplayRows()
 			if m.follow {
 				m.cursor = max(len(m.displayRows)-1, 0)
 			}
 		}
 		return m, recvEvent(m.stream)
+
+	case replayResultMsg:
+		if msg.Err != nil {
+			m.err = msg.Err
+			return m, nil
+		}
+		// Wait for the replayed event to arrive via Watch stream, then show in inspector.
+		m.replayEventID = msg.EventID
+		return m, nil
 
 	case errMsg:
 		m.err = msg.Err
@@ -526,7 +554,7 @@ func (m Model) renderInspector() string {
 	}
 	if n := len(boxLines); n > 0 {
 		borderFg := lipgloss.NewStyle().Foreground(borderColor)
-		help := " q: back  j/k: scroll "
+		help := " q: back  j/k: scroll  e: edit & resend "
 		dashes := max(innerWidth-len([]rune(help)), 0)
 		boxLines[n-1] = borderFg.Render("╰") +
 			lipgloss.NewStyle().Faint(true).Render(help) +
@@ -574,6 +602,12 @@ func (m Model) updateInspect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor = max(len(m.displayRows)-1, 0)
 		}
 		return m, nil
+	case "e":
+		ev := m.cursorEvent()
+		if ev == nil || len(ev.GetRequestBody()) == 0 || m.client == nil {
+			return m, nil
+		}
+		return m, m.editAndResend(ev)
 	case "j", "down":
 		ev := m.cursorEvent()
 		if ev != nil {
@@ -590,4 +624,68 @@ func (m Model) updateInspect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	return m, nil
+}
+
+func (m Model) editAndResend(ev *tapv1.GRPCEvent) tea.Cmd {
+	method := ev.GetMethod()
+	body := ev.GetRequestBody()
+
+	// Convert request body to JSON for editing.
+	jsonData, err := proxy.ProtoWireToJSON(body)
+	if err != nil {
+		// Fall back to raw hex-ish representation; not ideal but usable.
+		return func() tea.Msg { return replayResultMsg{Err: fmt.Errorf("encode JSON: %w", err)} }
+	}
+
+	// Write to temp file.
+	tmpFile, err := os.CreateTemp("", "grpc-tap-*.json")
+	if err != nil {
+		return func() tea.Msg { return replayResultMsg{Err: fmt.Errorf("create temp file: %w", err)} }
+	}
+	tmpPath := tmpFile.Name()
+	if _, err := tmpFile.Write(jsonData); err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpPath)
+		return func() tea.Msg { return replayResultMsg{Err: fmt.Errorf("write temp file: %w", err)} }
+	}
+	_ = tmpFile.Close()
+
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vi"
+	}
+
+	client := m.client
+
+	// Use tea.ExecProcess to open the editor.
+	c := exec.Command(editor, tmpPath)
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		defer func() { _ = os.Remove(tmpPath) }()
+		if err != nil {
+			return replayResultMsg{Err: fmt.Errorf("editor: %w", err)}
+		}
+
+		// Read edited file.
+		edited, err := os.ReadFile(tmpPath)
+		if err != nil {
+			return replayResultMsg{Err: fmt.Errorf("read edited file: %w", err)}
+		}
+
+		// Convert JSON back to protobuf wire format.
+		wire, err := proxy.JSONToProtoWire(edited)
+		if err != nil {
+			return replayResultMsg{Err: fmt.Errorf("encode protobuf: %w", err)}
+		}
+
+		// Call Replay RPC.
+		resp, err := client.Replay(context.Background(), &tapv1.ReplayRequest{
+			Method:      method,
+			RequestBody: wire,
+		})
+		if err != nil {
+			return replayResultMsg{Err: fmt.Errorf("replay: %w", err)}
+		}
+
+		return replayResultMsg{EventID: resp.GetEvent().GetId()}
+	})
 }

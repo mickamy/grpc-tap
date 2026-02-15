@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"testing"
@@ -15,7 +16,26 @@ import (
 	"github.com/mickamy/grpc-tap/server"
 )
 
+// fakeProxy implements proxy.Proxy for testing.
+type fakeProxy struct {
+	replayFunc func(ctx context.Context, method string, body []byte) (proxy.Event, error)
+}
+
+func (f *fakeProxy) ListenAndServe(context.Context) error       { return nil }
+func (f *fakeProxy) Events() <-chan proxy.Event                  { return nil }
+func (f *fakeProxy) Close() error                                { return nil }
+func (f *fakeProxy) Replay(ctx context.Context, method string, body []byte) (proxy.Event, error) {
+	if f.replayFunc != nil {
+		return f.replayFunc(ctx, method, body)
+	}
+	return proxy.Event{}, nil
+}
+
 func startServer(t *testing.T, b *broker.Broker) tapv1.TapServiceClient {
+	return startServerWithProxy(t, b, &fakeProxy{})
+}
+
+func startServerWithProxy(t *testing.T, b *broker.Broker, p proxy.Proxy) tapv1.TapServiceClient {
 	t.Helper()
 
 	lis, err := net.Listen("tcp", "localhost:0")
@@ -23,7 +43,7 @@ func startServer(t *testing.T, b *broker.Broker) tapv1.TapServiceClient {
 		t.Fatal(err)
 	}
 
-	srv := server.New(b)
+	srv := server.New(b, p)
 	t.Cleanup(srv.Stop)
 
 	go func() {
@@ -134,5 +154,48 @@ func TestWatch_MultipleEvents(t *testing.T) {
 		if got := resp.GetEvent().GetId(); got != want {
 			t.Errorf("event[%d] ID = %q, want %q", i, got, want)
 		}
+	}
+}
+
+func TestReplay(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	b := broker.New(8)
+	fp := &fakeProxy{
+		replayFunc: func(_ context.Context, method string, body []byte) (proxy.Event, error) {
+			return proxy.Event{
+				ID:           "replay-1",
+				Method:       method,
+				CallType:     proxy.Unary,
+				Protocol:     proxy.ProtocolGRPC,
+				StartTime:    time.Now(),
+				Duration:     10 * time.Millisecond,
+				Status:       0,
+				RequestBody:  body,
+				ResponseBody: []byte("response"),
+			}, nil
+		},
+	}
+	client := startServerWithProxy(t, b, fp)
+
+	reqBody := []byte("hello")
+	resp, err := client.Replay(ctx, &tapv1.ReplayRequest{
+		Method:      "/test.Service/Hello",
+		RequestBody: reqBody,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := resp.GetEvent()
+	if got.GetId() != "replay-1" {
+		t.Errorf("ID = %q, want %q", got.GetId(), "replay-1")
+	}
+	if got.GetMethod() != "/test.Service/Hello" {
+		t.Errorf("Method = %q, want %q", got.GetMethod(), "/test.Service/Hello")
+	}
+	if string(got.GetRequestBody()) != "hello" {
+		t.Errorf("RequestBody = %q, want %q", got.GetRequestBody(), "hello")
 	}
 }

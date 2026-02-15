@@ -39,6 +39,16 @@ message WatchResponse {
   GRPCEvent event = 1;
 }
 
+message ReplayRequest {
+  string method = 1;      // e.g. "/echo.v1.EchoService/Echo"
+  bytes request_body = 2; // protobuf wire format (without gRPC framing)
+}
+
+message ReplayResponse {
+  GRPCEvent event = 1;    // resulting event from the replayed call
+}
+
 service TapService {
   rpc Watch(WatchRequest) returns (stream WatchResponse);
+  rpc Replay(ReplayRequest) returns (ReplayResponse);
 }

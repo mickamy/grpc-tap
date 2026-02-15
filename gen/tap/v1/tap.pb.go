@@ -326,6 +326,102 @@ func (x *WatchResponse) GetEvent() *GRPCEvent {
 	return nil
 }
 
+type ReplayRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Method        string                 `protobuf:"bytes,1,opt,name=method,proto3" json:"method,omitempty"`                              // e.g. "/echo.v1.EchoService/Echo"
+	RequestBody   []byte                 `protobuf:"bytes,2,opt,name=request_body,json=requestBody,proto3" json:"request_body,omitempty"` // protobuf wire format (without gRPC framing)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReplayRequest) Reset() {
+	*x = ReplayRequest{}
+	mi := &file_tap_v1_tap_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReplayRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReplayRequest) ProtoMessage() {}
+
+func (x *ReplayRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tap_v1_tap_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReplayRequest.ProtoReflect.Descriptor instead.
+func (*ReplayRequest) Descriptor() ([]byte, []int) {
+	return file_tap_v1_tap_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ReplayRequest) GetMethod() string {
+	if x != nil {
+		return x.Method
+	}
+	return ""
+}
+
+func (x *ReplayRequest) GetRequestBody() []byte {
+	if x != nil {
+		return x.RequestBody
+	}
+	return nil
+}
+
+type ReplayResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Event         *GRPCEvent             `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"` // resulting event from the replayed call
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReplayResponse) Reset() {
+	*x = ReplayResponse{}
+	mi := &file_tap_v1_tap_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReplayResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReplayResponse) ProtoMessage() {}
+
+func (x *ReplayResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tap_v1_tap_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReplayResponse.ProtoReflect.Descriptor instead.
+func (*ReplayResponse) Descriptor() ([]byte, []int) {
+	return file_tap_v1_tap_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ReplayResponse) GetEvent() *GRPCEvent {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
 var File_tap_v1_tap_proto protoreflect.FileDescriptor
 
 const file_tap_v1_tap_proto_rawDesc = "" +
@@ -346,6 +442,11 @@ const file_tap_v1_tap_proto_rawDesc = "" +
 	" \x01(\fR\fresponseBody\"\x0e\n" +
 	"\fWatchRequest\"8\n" +
 	"\rWatchResponse\x12'\n" +
+	"\x05event\x18\x01 \x01(\v2\x11.tap.v1.GRPCEventR\x05event\"J\n" +
+	"\rReplayRequest\x12\x16\n" +
+	"\x06method\x18\x01 \x01(\tR\x06method\x12!\n" +
+	"\frequest_body\x18\x02 \x01(\fR\vrequestBody\"9\n" +
+	"\x0eReplayResponse\x12'\n" +
 	"\x05event\x18\x01 \x01(\v2\x11.tap.v1.GRPCEventR\x05event*\x8f\x01\n" +
 	"\bCallType\x12\x19\n" +
 	"\x15CALL_TYPE_UNSPECIFIED\x10\x00\x12\x13\n" +
@@ -357,10 +458,11 @@ const file_tap_v1_tap_proto_rawDesc = "" +
 	"\x14PROTOCOL_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rPROTOCOL_GRPC\x10\x01\x12\x15\n" +
 	"\x11PROTOCOL_GRPC_WEB\x10\x02\x12\x14\n" +
-	"\x10PROTOCOL_CONNECT\x10\x032D\n" +
+	"\x10PROTOCOL_CONNECT\x10\x032}\n" +
 	"\n" +
 	"TapService\x126\n" +
-	"\x05Watch\x12\x14.tap.v1.WatchRequest\x1a\x15.tap.v1.WatchResponse0\x01B}\n" +
+	"\x05Watch\x12\x14.tap.v1.WatchRequest\x1a\x15.tap.v1.WatchResponse0\x01\x127\n" +
+	"\x06Replay\x12\x15.tap.v1.ReplayRequest\x1a\x16.tap.v1.ReplayResponseB}\n" +
 	"\n" +
 	"com.tap.v1B\bTapProtoP\x01Z,github.com/mickamy/grpc-tap/gen/tap/v1;tapv1\xa2\x02\x03TXX\xaa\x02\x06Tap.V1\xca\x02\x06Tap\\V1\xe2\x02\x12Tap\\V1\\GPBMetadata\xea\x02\aTap::V1b\x06proto3"
 
@@ -377,29 +479,34 @@ func file_tap_v1_tap_proto_rawDescGZIP() []byte {
 }
 
 var file_tap_v1_tap_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_tap_v1_tap_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_tap_v1_tap_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_tap_v1_tap_proto_goTypes = []any{
 	(CallType)(0),                 // 0: tap.v1.CallType
 	(Protocol)(0),                 // 1: tap.v1.Protocol
 	(*GRPCEvent)(nil),             // 2: tap.v1.GRPCEvent
 	(*WatchRequest)(nil),          // 3: tap.v1.WatchRequest
 	(*WatchResponse)(nil),         // 4: tap.v1.WatchResponse
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 6: google.protobuf.Duration
+	(*ReplayRequest)(nil),         // 5: tap.v1.ReplayRequest
+	(*ReplayResponse)(nil),        // 6: tap.v1.ReplayResponse
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 8: google.protobuf.Duration
 }
 var file_tap_v1_tap_proto_depIdxs = []int32{
 	0, // 0: tap.v1.GRPCEvent.call_type:type_name -> tap.v1.CallType
-	5, // 1: tap.v1.GRPCEvent.start_time:type_name -> google.protobuf.Timestamp
-	6, // 2: tap.v1.GRPCEvent.duration:type_name -> google.protobuf.Duration
+	7, // 1: tap.v1.GRPCEvent.start_time:type_name -> google.protobuf.Timestamp
+	8, // 2: tap.v1.GRPCEvent.duration:type_name -> google.protobuf.Duration
 	1, // 3: tap.v1.GRPCEvent.protocol:type_name -> tap.v1.Protocol
 	2, // 4: tap.v1.WatchResponse.event:type_name -> tap.v1.GRPCEvent
-	3, // 5: tap.v1.TapService.Watch:input_type -> tap.v1.WatchRequest
-	4, // 6: tap.v1.TapService.Watch:output_type -> tap.v1.WatchResponse
-	6, // [6:7] is the sub-list for method output_type
-	5, // [5:6] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	2, // 5: tap.v1.ReplayResponse.event:type_name -> tap.v1.GRPCEvent
+	3, // 6: tap.v1.TapService.Watch:input_type -> tap.v1.WatchRequest
+	5, // 7: tap.v1.TapService.Replay:input_type -> tap.v1.ReplayRequest
+	4, // 8: tap.v1.TapService.Watch:output_type -> tap.v1.WatchResponse
+	6, // 9: tap.v1.TapService.Replay:output_type -> tap.v1.ReplayResponse
+	8, // [8:10] is the sub-list for method output_type
+	6, // [6:8] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_tap_v1_tap_proto_init() }
@@ -413,7 +520,7 @@ func file_tap_v1_tap_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tap_v1_tap_proto_rawDesc), len(file_tap_v1_tap_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

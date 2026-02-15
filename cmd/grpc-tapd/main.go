@@ -53,25 +53,25 @@ func run(listen, upstream, grpcAddr string) error {
 	// Broker
 	b := broker.New(256)
 
+	// Reverse proxy
+	p, err := proxy.New(listen, upstream)
+	if err != nil {
+		return fmt.Errorf("proxy: %w", err)
+	}
+
 	// gRPC server for TUI clients
 	var lc net.ListenConfig
 	grpcLis, err := lc.Listen(ctx, "tcp", grpcAddr)
 	if err != nil {
 		return fmt.Errorf("listen grpc %s: %w", grpcAddr, err)
 	}
-	srv := server.New(b)
+	srv := server.New(b, p)
 	go func() {
 		log.Printf("gRPC server listening on %s", grpcAddr)
 		if err := srv.Serve(grpcLis); err != nil {
 			log.Printf("grpc serve: %v", err)
 		}
 	}()
-
-	// Reverse proxy
-	p, err := proxy.New(listen, upstream)
-	if err != nil {
-		return fmt.Errorf("proxy: %w", err)
-	}
 
 	go func() {
 		for ev := range p.Events() {

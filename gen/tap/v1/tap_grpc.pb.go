@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TapService_Watch_FullMethodName = "/tap.v1.TapService/Watch"
+	TapService_Watch_FullMethodName  = "/tap.v1.TapService/Watch"
+	TapService_Replay_FullMethodName = "/tap.v1.TapService/Replay"
 )
 
 // TapServiceClient is the client API for TapService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TapServiceClient interface {
 	Watch(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchResponse], error)
+	Replay(ctx context.Context, in *ReplayRequest, opts ...grpc.CallOption) (*ReplayResponse, error)
 }
 
 type tapServiceClient struct {
@@ -56,11 +58,22 @@ func (c *tapServiceClient) Watch(ctx context.Context, in *WatchRequest, opts ...
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type TapService_WatchClient = grpc.ServerStreamingClient[WatchResponse]
 
+func (c *tapServiceClient) Replay(ctx context.Context, in *ReplayRequest, opts ...grpc.CallOption) (*ReplayResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReplayResponse)
+	err := c.cc.Invoke(ctx, TapService_Replay_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TapServiceServer is the server API for TapService service.
 // All implementations must embed UnimplementedTapServiceServer
 // for forward compatibility.
 type TapServiceServer interface {
 	Watch(*WatchRequest, grpc.ServerStreamingServer[WatchResponse]) error
+	Replay(context.Context, *ReplayRequest) (*ReplayResponse, error)
 	mustEmbedUnimplementedTapServiceServer()
 }
 
@@ -73,6 +86,9 @@ type UnimplementedTapServiceServer struct{}
 
 func (UnimplementedTapServiceServer) Watch(*WatchRequest, grpc.ServerStreamingServer[WatchResponse]) error {
 	return status.Error(codes.Unimplemented, "method Watch not implemented")
+}
+func (UnimplementedTapServiceServer) Replay(context.Context, *ReplayRequest) (*ReplayResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Replay not implemented")
 }
 func (UnimplementedTapServiceServer) mustEmbedUnimplementedTapServiceServer() {}
 func (UnimplementedTapServiceServer) testEmbeddedByValue()                    {}
@@ -106,13 +122,36 @@ func _TapService_Watch_Handler(srv interface{}, stream grpc.ServerStream) error 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type TapService_WatchServer = grpc.ServerStreamingServer[WatchResponse]
 
+func _TapService_Replay_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplayRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TapServiceServer).Replay(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TapService_Replay_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TapServiceServer).Replay(ctx, req.(*ReplayRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TapService_ServiceDesc is the grpc.ServiceDesc for TapService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TapService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "tap.v1.TapService",
 	HandlerType: (*TapServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Replay",
+			Handler:    _TapService_Replay_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Watch",

@@ -74,6 +74,8 @@ type Proxy interface {
 	ListenAndServe(ctx context.Context) error
 	// Events returns the channel of captured events.
 	Events() <-chan Event
+	// Replay sends a request to the upstream server and returns the resulting event.
+	Replay(ctx context.Context, method string, body []byte) (Event, error)
 	// Close stops the proxy.
 	Close() error
 }
