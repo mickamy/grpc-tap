@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/mickamy/grpc-tap/clipboard"
 	tapv1 "github.com/mickamy/grpc-tap/gen/tap/v1"
 	"github.com/mickamy/grpc-tap/proxy"
 )
@@ -56,6 +58,7 @@ type Model struct {
 	displayRows []int // indices into events
 
 	inspectScroll int
+	inspectStatus string // temporary status message (e.g. "Copied!")
 	replayEventID string // when set, navigate to this event in inspector on arrival
 
 	analyticsRows     []analyticsRow
@@ -76,6 +79,8 @@ type replayResultMsg struct {
 	EventID string // ID of the replayed event (empty on error)
 	Err     error
 }
+
+type clearStatusMsg struct{}
 
 // New creates a new Model targeting the given grpc-tapd address.
 func New(target string) Model {
@@ -147,6 +152,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Wait for the replayed event to arrive via Watch stream, then show in inspector.
 		m.replayEventID = msg.EventID
+		return m, nil
+
+	case clearStatusMsg:
+		m.inspectStatus = ""
 		return m, nil
 
 	case errMsg:
@@ -547,6 +556,9 @@ func (m Model) renderInspector() string {
 		borderFg := lipgloss.NewStyle().Foreground(borderColor)
 		titleStyle := lipgloss.NewStyle().Bold(true)
 		title := " Inspector "
+		if m.inspectStatus != "" {
+			title += "— " + m.inspectStatus + " "
+		}
 		dashes := max(innerWidth-len([]rune(title)), 0)
 		boxLines[0] = borderFg.Render("╭") +
 			titleStyle.Render(title) +
@@ -554,7 +566,7 @@ func (m Model) renderInspector() string {
 	}
 	if n := len(boxLines); n > 0 {
 		borderFg := lipgloss.NewStyle().Foreground(borderColor)
-		help := " q: back  j/k: scroll  e: edit & resend "
+		help := " q: back  j/k: scroll  c/C: copy req/resp  e: edit & resend "
 		dashes := max(innerWidth-len([]rune(help)), 0)
 		boxLines[n-1] = borderFg.Render("╰") +
 			lipgloss.NewStyle().Faint(true).Render(help) +
@@ -618,6 +630,18 @@ func (m Model) updateInspect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, m.editAndResend(ev)
+	case "c":
+		ev := m.cursorEvent()
+		if ev == nil || len(ev.GetRequestBody()) == 0 {
+			return m, nil
+		}
+		return m.copyBody(ev.GetRequestBody(), "Request copied!")
+	case "C":
+		ev := m.cursorEvent()
+		if ev == nil || len(ev.GetResponseBody()) == 0 {
+			return m, nil
+		}
+		return m.copyBody(ev.GetResponseBody(), "Response copied!")
 	case "j", "down":
 		ev := m.cursorEvent()
 		if ev != nil {
@@ -698,4 +722,25 @@ func (m Model) editAndResend(ev *tapv1.GRPCEvent) tea.Cmd {
 
 		return replayResultMsg{EventID: resp.GetEvent().GetId()}
 	})
+}
+
+func (m Model) copyBody(body []byte, statusText string) (tea.Model, tea.Cmd) {
+	text := bodyToClipboardText(body)
+	if err := clipboard.Copy(context.Background(), text); err != nil {
+		m.inspectStatus = "Copy failed"
+	} else {
+		m.inspectStatus = statusText
+	}
+	return m, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
+		return clearStatusMsg{}
+	})
+}
+
+func bodyToClipboardText(body []byte) string {
+	// Try JSON (pretty-printed protobuf wire)
+	if j, err := proxy.ProtoWireToJSON(body); err == nil {
+		return string(j)
+	}
+	// Fall back to raw string
+	return string(body)
 }
