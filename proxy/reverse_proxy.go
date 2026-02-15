@@ -94,14 +94,23 @@ func (rp *ReverseProxy) Close() error {
 func (rp *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	protocol := DetectProtocol(r)
+	contentType := r.Header.Get("Content-Type")
 	method := r.URL.Path
+
+	// Wrap request body for frame counting (gRPC/gRPC-Web).
+	var reqFrames *FrameCounter
+	body := io.Reader(r.Body)
+	if protocol == ProtocolGRPC || protocol == ProtocolGRPCWeb {
+		reqFrames = NewFrameCounter(r.Body)
+		body = reqFrames
+	}
 
 	// Build upstream request.
 	upstreamURL := *rp.upstream
 	upstreamURL.Path = r.URL.Path
 	upstreamURL.RawQuery = r.URL.RawQuery
 
-	outReq, err := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL.String(), r.Body)
+	outReq, err := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL.String(), io.NopCloser(body))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
@@ -125,11 +134,19 @@ func (rp *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(resp.StatusCode)
 
+	// Wrap response body for frame counting (gRPC/gRPC-Web).
+	var respFrames *FrameCounter
+	respBody := io.Reader(resp.Body)
+	if protocol == ProtocolGRPC || protocol == ProtocolGRPCWeb {
+		respFrames = NewFrameCounter(resp.Body)
+		respBody = respFrames
+	}
+
 	// Copy body (streaming).
 	if f, ok := w.(http.Flusher); ok {
 		buf := make([]byte, 32*1024)
 		for {
-			n, readErr := resp.Body.Read(buf)
+			n, readErr := respBody.Read(buf)
 			if n > 0 {
 				_, _ = w.Write(buf[:n])
 				f.Flush()
@@ -139,7 +156,7 @@ func (rp *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		_, _ = io.Copy(w, resp.Body)
+		_, _ = io.Copy(w, respBody)
 	}
 
 	// Copy trailers.
@@ -154,7 +171,7 @@ func (rp *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rp.events <- Event{
 		ID:        uuid.New().String(),
 		Method:    method,
-		CallType:  Unary, // TODO: detect streaming from request/response framing
+		CallType:  DetectCallType(protocol, contentType, reqFrames, respFrames),
 		Protocol:  protocol,
 		StartTime: start,
 		Duration:  time.Since(start),
