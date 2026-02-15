@@ -158,7 +158,7 @@ func decodeProtoWire(data []byte, indent string) []string {
 			} else {
 				lines = append(lines, fmt.Sprintf("%s%d: %x", indent, num, v))
 			}
-		default:
+		case protowire.StartGroupType, protowire.EndGroupType:
 			return nil
 		}
 	}

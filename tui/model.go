@@ -198,6 +198,8 @@ func (m Model) View() string {
 		return m.renderAnalytics()
 	case viewInspect:
 		return m.renderInspector()
+	case viewList:
+		return m.renderListView()
 	}
 
 	return m.renderListView()
@@ -692,7 +694,8 @@ func (m Model) editAndResend(ev *tapv1.GRPCEvent) tea.Cmd {
 	client := m.client
 
 	// Use tea.ExecProcess to open the editor.
-	c := exec.Command(editor, tmpPath)
+	//nolint:gosec // G204: editor is user-configured $EDITOR
+	c := exec.CommandContext(context.Background(), editor, tmpPath)
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		defer func() { _ = os.Remove(tmpPath) }()
 		if err != nil {
@@ -700,7 +703,7 @@ func (m Model) editAndResend(ev *tapv1.GRPCEvent) tea.Cmd {
 		}
 
 		// Read edited file.
-		edited, err := os.ReadFile(tmpPath)
+		edited, err := os.ReadFile(tmpPath) //nolint:gosec // G304: path is our own temp file
 		if err != nil {
 			return replayResultMsg{Err: fmt.Errorf("read edited file: %w", err)}
 		}

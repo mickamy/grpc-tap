@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -176,7 +177,8 @@ func (m Model) renderAnalytics() string {
 
 	title := fmt.Sprintf(" Analytics (%d methods) [sort: %s] ", len(m.analyticsRows), m.analyticsSortMode)
 
-	colMethod := max(innerWidth-analyticsColMarker-analyticsColCount-analyticsColErrors-analyticsColAvg-analyticsColTotal-4, 10)
+	fixedCols := analyticsColMarker + analyticsColCount + analyticsColErrors + analyticsColAvg + analyticsColTotal + 4
+	colMethod := max(innerWidth-fixedCols, 10)
 
 	header := fmt.Sprintf("  %*s %*s %*s %*s  %s",
 		analyticsColCount, "Count",
@@ -208,7 +210,7 @@ func (m Model) renderAnalytics() string {
 
 		method := truncate(r.method, colMethod)
 
-		errStr := fmt.Sprintf("%d", r.errors)
+		errStr := strconv.Itoa(r.errors)
 		if r.errors > 0 {
 			errStr = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render(
 				fmt.Sprintf("%d(%.0f%%)", r.errors, r.errorRate()),

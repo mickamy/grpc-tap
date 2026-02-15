@@ -21,9 +21,9 @@ type fakeProxy struct {
 	replayFunc func(ctx context.Context, method string, body []byte) (proxy.Event, error)
 }
 
-func (f *fakeProxy) ListenAndServe(context.Context) error       { return nil }
-func (f *fakeProxy) Events() <-chan proxy.Event                  { return nil }
-func (f *fakeProxy) Close() error                                { return nil }
+func (f *fakeProxy) ListenAndServe(context.Context) error { return nil }
+func (f *fakeProxy) Events() <-chan proxy.Event           { return nil }
+func (f *fakeProxy) Close() error                         { return nil }
 func (f *fakeProxy) Replay(ctx context.Context, method string, body []byte) (proxy.Event, error) {
 	if f.replayFunc != nil {
 		return f.replayFunc(ctx, method, body)
@@ -38,7 +38,7 @@ func startServer(t *testing.T, b *broker.Broker) tapv1.TapServiceClient {
 func startServerWithProxy(t *testing.T, b *broker.Broker, p proxy.Proxy) tapv1.TapServiceClient {
 	t.Helper()
 
-	lis, err := net.Listen("tcp", "localhost:0")
+	lis, err := net.Listen("tcp", "localhost:0") //nolint:noctx // test code
 	if err != nil {
 		t.Fatal(err)
 	}

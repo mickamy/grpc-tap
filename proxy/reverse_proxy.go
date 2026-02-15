@@ -54,7 +54,7 @@ func New(listenAddr, upstreamAddr string) (*ReverseProxy, error) {
 	}
 
 	h2s := &http2.Server{}
-	rp.server = &http.Server{
+	rp.server = &http.Server{ //nolint:gosec // G112: gRPC proxy needs long-lived connections
 		Addr:    listenAddr,
 		Handler: h2c.NewHandler(rp, h2s),
 	}
@@ -64,7 +64,7 @@ func New(listenAddr, upstreamAddr string) (*ReverseProxy, error) {
 
 // ListenAndServe starts the proxy and blocks until ctx is cancelled.
 func (rp *ReverseProxy) ListenAndServe(ctx context.Context) error {
-	lis, err := net.Listen("tcp", rp.listenAddr)
+	lis, err := net.Listen("tcp", rp.listenAddr) //nolint:noctx // uses ctx for shutdown
 	if err != nil {
 		return fmt.Errorf("proxy: listen %s: %w", rp.listenAddr, err)
 	}
@@ -88,7 +88,7 @@ func (rp *ReverseProxy) Events() <-chan Event {
 
 // Close stops the proxy.
 func (rp *ReverseProxy) Close() error {
-	return rp.server.Close()
+	return rp.server.Close() //nolint:wrapcheck // pass-through
 }
 
 // Replay sends a gRPC unary request to the upstream server and returns the
@@ -109,7 +109,8 @@ func (rp *ReverseProxy) Replay(ctx context.Context, method string, body []byte) 
 	upstreamURL := *rp.upstream
 	upstreamURL.Path = method
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, upstreamURL.String(), io.NopCloser(bytes.NewReader(frame)))
+	reqBody := io.NopCloser(bytes.NewReader(frame))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, upstreamURL.String(), reqBody)
 	if err != nil {
 		return Event{}, fmt.Errorf("replay: build request: %w", err)
 	}

@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -36,17 +38,14 @@ func NewFrameCounter(r io.Reader) *FrameCounter {
 func (fc *FrameCounter) Read(p []byte) (int, error) {
 	n, err := fc.r.Read(p)
 	fc.scan(p[:n])
-	return n, err
+	return n, err //nolint:wrapcheck // pass-through reader
 }
 
 func (fc *FrameCounter) scan(data []byte) {
 	for len(data) > 0 {
 		if fc.state == 0 {
 			need := 5 - fc.hdrN
-			take := need
-			if take > len(data) {
-				take = len(data)
-			}
+			take := min(need, len(data))
 			copy(fc.hdrBuf[fc.hdrN:], data[:take])
 			fc.hdrN += take
 			data = data[take:]
@@ -59,10 +58,7 @@ func (fc *FrameCounter) scan(data []byte) {
 				}
 			}
 		} else {
-			skip := uint32(len(data))
-			if skip > fc.remain {
-				skip = fc.remain
-			}
+			skip := min(uint32(len(data)), fc.remain) //nolint:gosec // len(data) fits in uint32
 			fc.remain -= skip
 			data = data[skip:]
 			if fc.remain == 0 {
@@ -121,13 +117,10 @@ func NewCaptureReader(r io.Reader, maxSize int) *CaptureReader {
 func (cr *CaptureReader) Read(p []byte) (int, error) {
 	n, err := cr.r.Read(p)
 	if remaining := cr.maxSize - len(cr.buf); remaining > 0 && n > 0 {
-		take := n
-		if take > remaining {
-			take = remaining
-		}
+		take := min(n, remaining)
 		cr.buf = append(cr.buf, p[:take]...)
 	}
-	return n, err
+	return n, err //nolint:wrapcheck // pass-through reader
 }
 
 // Bytes returns the captured data.
@@ -144,7 +137,7 @@ func ExtractPayload(data []byte) []byte {
 	}
 	compressed := data[0]
 	length := binary.BigEndian.Uint32(data[1:5])
-	if uint32(len(data)-5) < length {
+	if uint32(len(data)-5) < length { //nolint:gosec // len-5 is non-negative (checked above)
 		return data
 	}
 	payload := data[5 : 5+length]
@@ -195,7 +188,11 @@ func ProtoWireToJSON(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.MarshalIndent(m, "", "  ")
+	b, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("proto wire to json: %w", err)
+	}
+	return b, nil
 }
 
 func protoWireToMap(data []byte) (map[string]any, error) {
@@ -206,7 +203,7 @@ func protoWireToMap(data []byte) (map[string]any, error) {
 	for len(data) > 0 {
 		num, wtype, n := protowire.ConsumeTag(data)
 		if n < 0 {
-			return nil, fmt.Errorf("invalid protobuf tag")
+			return nil, errors.New("invalid protobuf tag")
 		}
 		data = data[n:]
 		key := strconv.FormatInt(int64(num), 10)
@@ -245,9 +242,9 @@ func protoWireToMap(data []byte) (map[string]any, error) {
 			} else if utf8.Valid(v) && isPrintableBytes(v) {
 				m[key] = string(v)
 			} else {
-				m[key] = fmt.Sprintf("%x", v)
+				m[key] = hex.EncodeToString(v)
 			}
-		default:
+		case protowire.StartGroupType, protowire.EndGroupType:
 			return nil, fmt.Errorf("unsupported wire type %d for field %d", wtype, num)
 		}
 	}

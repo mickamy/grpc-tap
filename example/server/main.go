@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -22,7 +23,7 @@ func (s *echoServer) Echo(
 	req *connect.Request[echov1.EchoRequest],
 ) (*connect.Response[echov1.EchoResponse], error) {
 	if req.Msg.GetMessage() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("message must not be empty"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("message must not be empty"))
 	}
 	return connect.NewResponse(&echov1.EchoResponse{
 		Message: req.Msg.GetMessage(),
@@ -34,7 +35,7 @@ func (s *echoServer) Upper(
 	req *connect.Request[echov1.UpperRequest],
 ) (*connect.Response[echov1.UpperResponse], error) {
 	if req.Msg.GetMessage() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("message must not be empty"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("message must not be empty"))
 	}
 	return connect.NewResponse(&echov1.UpperResponse{
 		Message: strings.ToUpper(req.Msg.GetMessage()),
@@ -62,6 +63,7 @@ func main() {
 
 	addr := ":9000"
 	log.Printf("echo server listening on %s", addr)
+	//nolint:gosec // G114: example server
 	if err := http.ListenAndServe(addr, h2c.NewHandler(mux, &http2.Server{})); err != nil {
 		fmt.Printf("error: %v\n", err)
 	}

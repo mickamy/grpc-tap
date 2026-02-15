@@ -31,7 +31,7 @@ func TestDetectProtocol(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r, _ := http.NewRequest("POST", "/test.Service/Method", nil)
+			r, _ := http.NewRequest(http.MethodPost, "/test.Service/Method", nil) //nolint:noctx // test code
 			r.Header.Set("Content-Type", tt.contentType)
 			got := proxy.DetectProtocol(r)
 			if got != tt.want {

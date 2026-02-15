@@ -8,15 +8,16 @@ import (
 	"io"
 	"testing"
 
-	"github.com/mickamy/grpc-tap/proxy"
 	"google.golang.org/protobuf/encoding/protowire"
+
+	"github.com/mickamy/grpc-tap/proxy"
 )
 
 func buildGRPCFrame(payload []byte) []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(0) // no compression
 	length := make([]byte, 4)
-	binary.BigEndian.PutUint32(length, uint32(len(payload)))
+	binary.BigEndian.PutUint32(length, uint32(len(payload))) //nolint:gosec // test code, payload is small
 	buf.Write(length)
 	buf.Write(payload)
 	return buf.Bytes()
@@ -166,7 +167,7 @@ func TestExtractPayload(t *testing.T) {
 		var frame bytes.Buffer
 		frame.WriteByte(1) // compressed
 		length := make([]byte, 4)
-		binary.BigEndian.PutUint32(length, uint32(compressed.Len()))
+		binary.BigEndian.PutUint32(length, uint32(compressed.Len())) //nolint:gosec // test code, payload is small
 		frame.Write(length)
 		frame.Write(compressed.Bytes())
 
@@ -209,28 +210,32 @@ func TestDetectCallType(t *testing.T) {
 		want        proxy.CallType
 	}{
 		{
-			name:     "gRPC unary",
-			protocol: proxy.ProtocolGRPC,
-			reqFrames: 1, respFrames: 1,
-			want: proxy.Unary,
+			name:       "gRPC unary",
+			protocol:   proxy.ProtocolGRPC,
+			reqFrames:  1,
+			respFrames: 1,
+			want:       proxy.Unary,
 		},
 		{
-			name:     "gRPC server stream",
-			protocol: proxy.ProtocolGRPC,
-			reqFrames: 1, respFrames: 5,
-			want: proxy.ServerStream,
+			name:       "gRPC server stream",
+			protocol:   proxy.ProtocolGRPC,
+			reqFrames:  1,
+			respFrames: 5,
+			want:       proxy.ServerStream,
 		},
 		{
-			name:     "gRPC client stream",
-			protocol: proxy.ProtocolGRPC,
-			reqFrames: 3, respFrames: 1,
-			want: proxy.ClientStream,
+			name:       "gRPC client stream",
+			protocol:   proxy.ProtocolGRPC,
+			reqFrames:  3,
+			respFrames: 1,
+			want:       proxy.ClientStream,
 		},
 		{
-			name:     "gRPC bidi stream",
-			protocol: proxy.ProtocolGRPC,
-			reqFrames: 3, respFrames: 5,
-			want: proxy.BidiStream,
+			name:       "gRPC bidi stream",
+			protocol:   proxy.ProtocolGRPC,
+			reqFrames:  3,
+			respFrames: 5,
+			want:       proxy.BidiStream,
 		},
 		{
 			name:        "Connect unary",
