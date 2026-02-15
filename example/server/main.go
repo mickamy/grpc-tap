@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 	"golang.org/x/net/http2"
@@ -20,8 +21,37 @@ func (s *echoServer) Echo(
 	_ context.Context,
 	req *connect.Request[echov1.EchoRequest],
 ) (*connect.Response[echov1.EchoResponse], error) {
+	if req.Msg.GetMessage() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("message must not be empty"))
+	}
 	return connect.NewResponse(&echov1.EchoResponse{
 		Message: req.Msg.GetMessage(),
+	}), nil
+}
+
+func (s *echoServer) Upper(
+	_ context.Context,
+	req *connect.Request[echov1.UpperRequest],
+) (*connect.Response[echov1.UpperResponse], error) {
+	if req.Msg.GetMessage() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("message must not be empty"))
+	}
+	return connect.NewResponse(&echov1.UpperResponse{
+		Message: strings.ToUpper(req.Msg.GetMessage()),
+	}), nil
+}
+
+func (s *echoServer) Reverse(
+	_ context.Context,
+	req *connect.Request[echov1.ReverseRequest],
+) (*connect.Response[echov1.ReverseResponse], error) {
+	msg := req.Msg.GetMessage()
+	runes := []rune(msg)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return connect.NewResponse(&echov1.ReverseResponse{
+		Message: string(runes),
 	}), nil
 }
 

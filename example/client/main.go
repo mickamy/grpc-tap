@@ -77,6 +77,34 @@ func run(addr string) error {
 			fmt.Printf("[Connect] echo: %s\n", resp.Msg.GetMessage())
 		}
 
+		// Upper via Connect
+		upperResp, err := connectClient.Upper(ctx, connect.NewRequest(&echov1.UpperRequest{
+			Message: fmt.Sprintf("hello #%d", i),
+		}))
+		if err != nil {
+			log.Printf("[Connect] upper error: %v", err)
+		} else {
+			fmt.Printf("[Connect] upper: %s\n", upperResp.Msg.GetMessage())
+		}
+
+		// Reverse via gRPC
+		revResp, err := grpcClient.Reverse(ctx, connect.NewRequest(&echov1.ReverseRequest{
+			Message: fmt.Sprintf("hello #%d", i),
+		}))
+		if err != nil {
+			log.Printf("[gRPC]    reverse error: %v", err)
+		} else {
+			fmt.Printf("[gRPC]    reverse: %s\n", revResp.Msg.GetMessage())
+		}
+
+		// Send empty message to trigger error (every 3rd iteration)
+		if i%3 == 0 {
+			_, err = grpcClient.Echo(ctx, connect.NewRequest(&echov1.EchoRequest{}))
+			if err != nil {
+				log.Printf("[gRPC]    error (expected): %v", err)
+			}
+		}
+
 		select {
 		case <-ctx.Done():
 			fmt.Println("shutting down")

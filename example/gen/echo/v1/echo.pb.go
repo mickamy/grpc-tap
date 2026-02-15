@@ -109,6 +109,182 @@ func (x *EchoResponse) GetMessage() string {
 	return ""
 }
 
+type UpperRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpperRequest) Reset() {
+	*x = UpperRequest{}
+	mi := &file_echo_v1_echo_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpperRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpperRequest) ProtoMessage() {}
+
+func (x *UpperRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_echo_v1_echo_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpperRequest.ProtoReflect.Descriptor instead.
+func (*UpperRequest) Descriptor() ([]byte, []int) {
+	return file_echo_v1_echo_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *UpperRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type UpperResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpperResponse) Reset() {
+	*x = UpperResponse{}
+	mi := &file_echo_v1_echo_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpperResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpperResponse) ProtoMessage() {}
+
+func (x *UpperResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_echo_v1_echo_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpperResponse.ProtoReflect.Descriptor instead.
+func (*UpperResponse) Descriptor() ([]byte, []int) {
+	return file_echo_v1_echo_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *UpperResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type ReverseRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReverseRequest) Reset() {
+	*x = ReverseRequest{}
+	mi := &file_echo_v1_echo_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReverseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReverseRequest) ProtoMessage() {}
+
+func (x *ReverseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_echo_v1_echo_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReverseRequest.ProtoReflect.Descriptor instead.
+func (*ReverseRequest) Descriptor() ([]byte, []int) {
+	return file_echo_v1_echo_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ReverseRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type ReverseResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReverseResponse) Reset() {
+	*x = ReverseResponse{}
+	mi := &file_echo_v1_echo_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReverseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReverseResponse) ProtoMessage() {}
+
+func (x *ReverseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_echo_v1_echo_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReverseResponse.ProtoReflect.Descriptor instead.
+func (*ReverseResponse) Descriptor() ([]byte, []int) {
+	return file_echo_v1_echo_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ReverseResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_echo_v1_echo_proto protoreflect.FileDescriptor
 
 const file_echo_v1_echo_proto_rawDesc = "" +
@@ -117,9 +293,19 @@ const file_echo_v1_echo_proto_rawDesc = "" +
 	"\vEchoRequest\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"(\n" +
 	"\fEchoResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2B\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"(\n" +
+	"\fUpperRequest\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\")\n" +
+	"\rUpperResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"*\n" +
+	"\x0eReverseRequest\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"+\n" +
+	"\x0fReverseResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\xb8\x01\n" +
 	"\vEchoService\x123\n" +
-	"\x04Echo\x12\x14.echo.v1.EchoRequest\x1a\x15.echo.v1.EchoResponseB\x8f\x01\n" +
+	"\x04Echo\x12\x14.echo.v1.EchoRequest\x1a\x15.echo.v1.EchoResponse\x126\n" +
+	"\x05Upper\x12\x15.echo.v1.UpperRequest\x1a\x16.echo.v1.UpperResponse\x12<\n" +
+	"\aReverse\x12\x17.echo.v1.ReverseRequest\x1a\x18.echo.v1.ReverseResponseB\x8f\x01\n" +
 	"\vcom.echo.v1B\tEchoProtoP\x01Z6github.com/mickamy/grpc-tap/example/gen/echo/v1;echov1\xa2\x02\x03EXX\xaa\x02\aEcho.V1\xca\x02\bEcho_\\V1\xe2\x02\x14Echo_\\V1\\GPBMetadata\xea\x02\bEcho::V1b\x06proto3"
 
 var (
@@ -134,16 +320,24 @@ func file_echo_v1_echo_proto_rawDescGZIP() []byte {
 	return file_echo_v1_echo_proto_rawDescData
 }
 
-var file_echo_v1_echo_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_echo_v1_echo_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_echo_v1_echo_proto_goTypes = []any{
-	(*EchoRequest)(nil),  // 0: echo.v1.EchoRequest
-	(*EchoResponse)(nil), // 1: echo.v1.EchoResponse
+	(*EchoRequest)(nil),     // 0: echo.v1.EchoRequest
+	(*EchoResponse)(nil),    // 1: echo.v1.EchoResponse
+	(*UpperRequest)(nil),    // 2: echo.v1.UpperRequest
+	(*UpperResponse)(nil),   // 3: echo.v1.UpperResponse
+	(*ReverseRequest)(nil),  // 4: echo.v1.ReverseRequest
+	(*ReverseResponse)(nil), // 5: echo.v1.ReverseResponse
 }
 var file_echo_v1_echo_proto_depIdxs = []int32{
 	0, // 0: echo.v1.EchoService.Echo:input_type -> echo.v1.EchoRequest
-	1, // 1: echo.v1.EchoService.Echo:output_type -> echo.v1.EchoResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	2, // 1: echo.v1.EchoService.Upper:input_type -> echo.v1.UpperRequest
+	4, // 2: echo.v1.EchoService.Reverse:input_type -> echo.v1.ReverseRequest
+	1, // 3: echo.v1.EchoService.Echo:output_type -> echo.v1.EchoResponse
+	3, // 4: echo.v1.EchoService.Upper:output_type -> echo.v1.UpperResponse
+	5, // 5: echo.v1.EchoService.Reverse:output_type -> echo.v1.ReverseResponse
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -160,7 +354,7 @@ func file_echo_v1_echo_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_echo_v1_echo_proto_rawDesc), len(file_echo_v1_echo_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

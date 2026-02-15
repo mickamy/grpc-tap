@@ -35,11 +35,17 @@ const (
 const (
 	// EchoServiceEchoProcedure is the fully-qualified name of the EchoService's Echo RPC.
 	EchoServiceEchoProcedure = "/echo.v1.EchoService/Echo"
+	// EchoServiceUpperProcedure is the fully-qualified name of the EchoService's Upper RPC.
+	EchoServiceUpperProcedure = "/echo.v1.EchoService/Upper"
+	// EchoServiceReverseProcedure is the fully-qualified name of the EchoService's Reverse RPC.
+	EchoServiceReverseProcedure = "/echo.v1.EchoService/Reverse"
 )
 
 // EchoServiceClient is a client for the echo.v1.EchoService service.
 type EchoServiceClient interface {
 	Echo(context.Context, *connect.Request[v1.EchoRequest]) (*connect.Response[v1.EchoResponse], error)
+	Upper(context.Context, *connect.Request[v1.UpperRequest]) (*connect.Response[v1.UpperResponse], error)
+	Reverse(context.Context, *connect.Request[v1.ReverseRequest]) (*connect.Response[v1.ReverseResponse], error)
 }
 
 // NewEchoServiceClient constructs a client for the echo.v1.EchoService service. By default, it uses
@@ -59,12 +65,26 @@ func NewEchoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(echoServiceMethods.ByName("Echo")),
 			connect.WithClientOptions(opts...),
 		),
+		upper: connect.NewClient[v1.UpperRequest, v1.UpperResponse](
+			httpClient,
+			baseURL+EchoServiceUpperProcedure,
+			connect.WithSchema(echoServiceMethods.ByName("Upper")),
+			connect.WithClientOptions(opts...),
+		),
+		reverse: connect.NewClient[v1.ReverseRequest, v1.ReverseResponse](
+			httpClient,
+			baseURL+EchoServiceReverseProcedure,
+			connect.WithSchema(echoServiceMethods.ByName("Reverse")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // echoServiceClient implements EchoServiceClient.
 type echoServiceClient struct {
-	echo *connect.Client[v1.EchoRequest, v1.EchoResponse]
+	echo    *connect.Client[v1.EchoRequest, v1.EchoResponse]
+	upper   *connect.Client[v1.UpperRequest, v1.UpperResponse]
+	reverse *connect.Client[v1.ReverseRequest, v1.ReverseResponse]
 }
 
 // Echo calls echo.v1.EchoService.Echo.
@@ -72,9 +92,21 @@ func (c *echoServiceClient) Echo(ctx context.Context, req *connect.Request[v1.Ec
 	return c.echo.CallUnary(ctx, req)
 }
 
+// Upper calls echo.v1.EchoService.Upper.
+func (c *echoServiceClient) Upper(ctx context.Context, req *connect.Request[v1.UpperRequest]) (*connect.Response[v1.UpperResponse], error) {
+	return c.upper.CallUnary(ctx, req)
+}
+
+// Reverse calls echo.v1.EchoService.Reverse.
+func (c *echoServiceClient) Reverse(ctx context.Context, req *connect.Request[v1.ReverseRequest]) (*connect.Response[v1.ReverseResponse], error) {
+	return c.reverse.CallUnary(ctx, req)
+}
+
 // EchoServiceHandler is an implementation of the echo.v1.EchoService service.
 type EchoServiceHandler interface {
 	Echo(context.Context, *connect.Request[v1.EchoRequest]) (*connect.Response[v1.EchoResponse], error)
+	Upper(context.Context, *connect.Request[v1.UpperRequest]) (*connect.Response[v1.UpperResponse], error)
+	Reverse(context.Context, *connect.Request[v1.ReverseRequest]) (*connect.Response[v1.ReverseResponse], error)
 }
 
 // NewEchoServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -90,10 +122,26 @@ func NewEchoServiceHandler(svc EchoServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(echoServiceMethods.ByName("Echo")),
 		connect.WithHandlerOptions(opts...),
 	)
+	echoServiceUpperHandler := connect.NewUnaryHandler(
+		EchoServiceUpperProcedure,
+		svc.Upper,
+		connect.WithSchema(echoServiceMethods.ByName("Upper")),
+		connect.WithHandlerOptions(opts...),
+	)
+	echoServiceReverseHandler := connect.NewUnaryHandler(
+		EchoServiceReverseProcedure,
+		svc.Reverse,
+		connect.WithSchema(echoServiceMethods.ByName("Reverse")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/echo.v1.EchoService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case EchoServiceEchoProcedure:
 			echoServiceEchoHandler.ServeHTTP(w, r)
+		case EchoServiceUpperProcedure:
+			echoServiceUpperHandler.ServeHTTP(w, r)
+		case EchoServiceReverseProcedure:
+			echoServiceReverseHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -105,4 +153,12 @@ type UnimplementedEchoServiceHandler struct{}
 
 func (UnimplementedEchoServiceHandler) Echo(context.Context, *connect.Request[v1.EchoRequest]) (*connect.Response[v1.EchoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("echo.v1.EchoService.Echo is not implemented"))
+}
+
+func (UnimplementedEchoServiceHandler) Upper(context.Context, *connect.Request[v1.UpperRequest]) (*connect.Response[v1.UpperResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("echo.v1.EchoService.Upper is not implemented"))
+}
+
+func (UnimplementedEchoServiceHandler) Reverse(context.Context, *connect.Request[v1.ReverseRequest]) (*connect.Response[v1.ReverseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("echo.v1.EchoService.Reverse is not implemented"))
 }

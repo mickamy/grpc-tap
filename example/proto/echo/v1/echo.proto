@@ -10,6 +10,24 @@ message EchoResponse {
   string message = 1;
 }
 
+message UpperRequest {
+  string message = 1;
+}
+
+message UpperResponse {
+  string message = 1;
+}
+
+message ReverseRequest {
+  string message = 1;
+}
+
+message ReverseResponse {
+  string message = 1;
+}
+
 service EchoService {
   rpc Echo(EchoRequest) returns (EchoResponse);
+  rpc Upper(UpperRequest) returns (UpperResponse);
+  rpc Reverse(ReverseRequest) returns (ReverseResponse);
 }
