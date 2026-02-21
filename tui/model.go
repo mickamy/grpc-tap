@@ -97,7 +97,7 @@ type exportResultMsg struct {
 func New(target string) Model {
 	return Model{
 		target: target,
-		follow: true,
+		follow: false,
 	}
 }
 

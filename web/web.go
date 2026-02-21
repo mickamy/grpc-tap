@@ -35,7 +35,10 @@ func New(b *broker.Broker, p proxy.Proxy) *Server {
 
 	mux := http.NewServeMux()
 
-	sub, _ := fs.Sub(staticFS, "static")
+	sub, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		panic(fmt.Sprintf("web: embedded static filesystem: %v", err))
+	}
 	mux.Handle("GET /", http.FileServer(http.FS(sub)))
 	mux.HandleFunc("GET /api/events", s.handleSSE)
 	mux.HandleFunc("POST /api/replay", s.handleReplay)
@@ -164,6 +167,8 @@ type replayResponse struct {
 }
 
 func (s *Server) handleReplay(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 2*proxy.MaxCaptureSize)
+
 	var req replayRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, &replayResponse{
@@ -172,10 +177,24 @@ func (s *Server) handleReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Method == "" || !strings.HasPrefix(req.Method, "/") {
+		writeJSON(w, http.StatusBadRequest, &replayResponse{
+			Error: "invalid method: must be a non-empty path starting with '/'",
+		})
+		return
+	}
+
 	body, err := base64.StdEncoding.DecodeString(req.RequestBody)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, &replayResponse{
 			Error: "invalid base64 body: " + err.Error(),
+		})
+		return
+	}
+
+	if len(body) > proxy.MaxCaptureSize {
+		writeJSON(w, http.StatusBadRequest, &replayResponse{
+			Error: "request body too large",
 		})
 		return
 	}
