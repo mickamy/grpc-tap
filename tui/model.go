@@ -800,13 +800,11 @@ func (m Model) showAlert(msg string) (Model, tea.Cmd) {
 func (m Model) copyBody(body []byte, statusText string) (tea.Model, tea.Cmd) {
 	text := bodyToClipboardText(body)
 	if err := clipboard.Copy(context.Background(), text); err != nil {
-		m.inspectStatus = "Copy failed"
-	} else {
-		m.inspectStatus = statusText
+		m, cmd := m.showAlert("Copy failed")
+		return m, cmd
 	}
-	return m, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
-		return clearStatusMsg{}
-	})
+	m, cmd := m.showAlert(statusText)
+	return m, cmd
 }
 
 func bodyToClipboardText(body []byte) string {
