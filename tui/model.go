@@ -61,6 +61,11 @@ type Model struct {
 	inspectStatus string // temporary status message (e.g. "Copied!")
 	replayEventID string // when set, navigate to this event in inspector on arrival
 
+	writeMode bool // waiting for export format selection
+
+	alertMessage string // overlay alert text
+	alertSeq     int    // monotonic counter to debounce clearAlertMsg
+
 	analyticsRows     []analyticsRow
 	analyticsCursor   int
 	analyticsSortMode analyticsSortMode
@@ -81,6 +86,12 @@ type replayResultMsg struct {
 }
 
 type clearStatusMsg struct{}
+type clearAlertMsg struct{ seq int }
+
+type exportResultMsg struct {
+	path string
+	err  error
+}
 
 // New creates a new Model targeting the given grpc-tapd address.
 func New(target string) Model {
@@ -154,8 +165,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.replayEventID = msg.EventID
 		return m, nil
 
+	case exportResultMsg:
+		alertMsg := "wrote: ./" + msg.path
+		if msg.err != nil {
+			alertMsg = "write error: " + msg.err.Error()
+		}
+		m, cmd := m.showAlert(alertMsg)
+		return m, cmd
+
 	case clearStatusMsg:
 		m.inspectStatus = ""
+		return m, nil
+
+	case clearAlertMsg:
+		if msg.seq == m.alertSeq {
+			m.alertMessage = ""
+		}
 		return m, nil
 
 	case errMsg:
@@ -163,6 +188,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		m.alertMessage = ""
 		switch m.view {
 		case viewAnalytics:
 			return m.updateAnalytics(msg)
@@ -193,16 +219,21 @@ func (m Model) View() string {
 		return "Waiting for gRPC traffic..."
 	}
 
+	var view string
 	switch m.view {
 	case viewAnalytics:
-		return m.renderAnalytics()
+		view = m.renderAnalytics()
 	case viewInspect:
-		return m.renderInspector()
-	case viewList:
-		return m.renderListView()
+		view = m.renderInspector()
+	default:
+		view = m.renderListView()
 	}
 
-	return m.renderListView()
+	if m.alertMessage != "" {
+		view = overlayAlert(view, m.alertMessage, m.width)
+	}
+
+	return view
 }
 
 func (m Model) listHeight() int {
@@ -235,6 +266,9 @@ func (m Model) rebuildDisplayRows() []int {
 }
 
 func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.writeMode {
+		return m.updateWrite(msg)
+	}
 	if m.searchMode {
 		return m.updateSearch(msg)
 	}
@@ -265,6 +299,9 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.analyticsRows = m.buildAnalyticsRows()
 		sortAnalyticsRows(m.analyticsRows, m.analyticsSortMode)
 		m.analyticsCursor = 0
+		return m, nil
+	case "w":
+		m.writeMode = true
 		return m, nil
 	case "s":
 		return m.toggleSort(), nil
@@ -357,6 +394,28 @@ func (m Model) clearFilter() Model {
 		m.cursor = min(m.cursor, max(len(m.displayRows)-1, 0))
 	}
 	return m
+}
+
+func (m Model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.writeMode = false
+	switch msg.String() {
+	case "j":
+		return m, m.runExport(exportJSON)
+	case "m":
+		return m, m.runExport(exportMarkdown)
+	}
+	return m, nil
+}
+
+func (m Model) runExport(format exportFormat) tea.Cmd {
+	events := make([]*tapv1.GRPCEvent, len(m.events))
+	copy(events, m.events)
+	searchQuery := m.searchQuery
+	filterErrors := m.filterErrors
+	return func() tea.Msg {
+		path, err := writeExport(events, searchQuery, filterErrors, format, "")
+		return exportResultMsg{path: path, err: err}
+	}
 }
 
 func (m Model) cursorEvent() *tapv1.GRPCEvent {
@@ -484,10 +543,12 @@ func (m Model) renderListView() string {
 	// Footer
 	var footer string
 	switch {
+	case m.writeMode:
+		footer = "  write: [j]son [m]arkdown"
 	case m.searchMode:
 		footer = fmt.Sprintf("  / %s█", m.searchQuery)
 	default:
-		footer = "  q: quit  j/k: navigate  enter: inspect  /: search  s: sort  e: errors  a: analytics"
+		footer = "  q: quit  j/k: navigate  enter: inspect  /: search  s: sort  e: errors  a: analytics  w: write"
 		if m.searchQuery != "" {
 			footer += "  esc: clear filter"
 		}
@@ -724,6 +785,15 @@ func (m Model) editAndResend(ev *tapv1.GRPCEvent) tea.Cmd {
 		}
 
 		return replayResultMsg{EventID: resp.GetEvent().GetId()}
+	})
+}
+
+func (m Model) showAlert(msg string) (Model, tea.Cmd) {
+	m.alertSeq++
+	m.alertMessage = msg
+	seq := m.alertSeq
+	return m, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+		return clearAlertMsg{seq: seq}
 	})
 }
 
