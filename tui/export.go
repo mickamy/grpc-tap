@@ -187,9 +187,10 @@ func callTypeString(ct tapv1.CallType) string {
 		return "ClientStream"
 	case tapv1.CallType_CALL_TYPE_BIDI_STREAM:
 		return "BidiStream"
-	default:
+	case tapv1.CallType_CALL_TYPE_UNSPECIFIED:
 		return "Unknown"
 	}
+	return "Unknown"
 }
 
 func renderExportJSON(

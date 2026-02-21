@@ -225,7 +225,7 @@ func (m Model) View() string {
 		view = m.renderAnalytics()
 	case viewInspect:
 		view = m.renderInspector()
-	default:
+	case viewList:
 		view = m.renderListView()
 	}
 
@@ -742,7 +742,7 @@ func (m Model) editAndResend(ev *tapv1.GRPCEvent) tea.Cmd {
 	tmpPath := tmpFile.Name()
 	if _, err := tmpFile.Write(jsonData); err != nil {
 		_ = tmpFile.Close()
-		_ = os.Remove(tmpPath)
+		_ = os.Remove(tmpPath) //nolint:gosec // G703: tmpPath is from os.CreateTemp
 		return func() tea.Msg { return replayResultMsg{Err: fmt.Errorf("write temp file: %w", err)} }
 	}
 	_ = tmpFile.Close()
