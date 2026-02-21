@@ -98,28 +98,45 @@ func TestSSE(t *testing.T) {
 		Status:    0,
 	}
 
-	// Give the SSE handler time to subscribe.
-	time.Sleep(50 * time.Millisecond)
+	// Wait for the SSE handler to subscribe.
+	waitDeadline := time.After(5 * time.Second)
+	for b.SubscriberCount() == 0 {
+		select {
+		case <-waitDeadline:
+			t.Fatal("timed out waiting for SSE subscriber")
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
 	b.Publish(ev)
 
-	scanner := bufio.NewScanner(resp.Body)
-	deadline := time.After(5 * time.Second)
-	for {
-		select {
-		case <-deadline:
-			t.Fatal("timed out waiting for SSE event")
-		default:
+	// Read SSE data in a goroutine to avoid blocking the test.
+	type sseResult struct {
+		data string
+		err  error
+	}
+	ch := make(chan sseResult, 1)
+	go func() {
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if data, ok := strings.CutPrefix(line, "data: "); ok {
+				ch <- sseResult{data: data}
+				return
+			}
 		}
-		if !scanner.Scan() {
-			t.Fatal("unexpected end of SSE stream")
+		ch <- sseResult{err: scanner.Err()}
+	}()
+
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for SSE event")
+	case res := <-ch:
+		if res.err != nil {
+			t.Fatalf("scanner error: %v", res.err)
 		}
-		line := scanner.Text()
-		if !strings.HasPrefix(line, "data: ") {
-			continue
-		}
-		data := strings.TrimPrefix(line, "data: ")
 		var got map[string]any
-		if err := json.Unmarshal([]byte(data), &got); err != nil {
+		if err := json.Unmarshal([]byte(res.data), &got); err != nil {
 			t.Fatalf("invalid JSON in SSE event: %v", err)
 		}
 		if got["id"] != "sse-1" {
@@ -128,7 +145,6 @@ func TestSSE(t *testing.T) {
 		if got["method"] != "/test.Service/Hello" {
 			t.Errorf("method = %v, want %q", got["method"], "/test.Service/Hello")
 		}
-		return
 	}
 }
 
@@ -174,6 +190,9 @@ func TestReplay(t *testing.T) {
 	}
 	if result.Error != "" {
 		t.Fatalf("unexpected error: %s", result.Error)
+	}
+	if result.Event == nil {
+		t.Fatal("event is nil")
 	}
 	if result.Event.ID != "replay-1" {
 		t.Errorf("id = %q, want %q", result.Event.ID, "replay-1")
