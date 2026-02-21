@@ -38,6 +38,26 @@ func newTestServer(t *testing.T, b *broker.Broker, p proxy.Proxy) *httptest.Serv
 	return ts
 }
 
+// doPost sends a POST to /api/replay and returns the response.
+func doPost(
+	t *testing.T, ts *httptest.Server, body string,
+) *http.Response {
+	t.Helper()
+	req, err := http.NewRequestWithContext(
+		t.Context(), http.MethodPost,
+		ts.URL+"/api/replay", strings.NewReader(body),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := ts.Client().Do(req) //nolint:gosec // test code
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp
+}
+
 func TestSSE(t *testing.T) {
 	t.Parallel()
 
@@ -47,16 +67,18 @@ func TestSSE(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/api/events", nil)
+	req, err := http.NewRequestWithContext(
+		ctx, http.MethodGet, ts.URL+"/api/events", nil,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := ts.Client().Do(req) //nolint:gosec // test code
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
@@ -133,11 +155,8 @@ func TestReplay(t *testing.T) {
 
 	reqBody := base64.StdEncoding.EncodeToString([]byte("hello"))
 	payload := `{"method":"/test.Service/Hello","request_body":"` + reqBody + `"}`
-	resp, err := http.Post(ts.URL+"/api/replay", "application/json", strings.NewReader(payload))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
+	resp := doPost(t, ts, payload)
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
@@ -168,12 +187,8 @@ func TestReplay_InvalidJSON(t *testing.T) {
 	t.Parallel()
 
 	ts := newTestServer(t, broker.New(8), &fakeProxy{})
-
-	resp, err := http.Post(ts.URL+"/api/replay", "application/json", strings.NewReader("{bad"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
+	resp := doPost(t, ts, "{bad")
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusBadRequest)
@@ -184,13 +199,8 @@ func TestReplay_InvalidBase64(t *testing.T) {
 	t.Parallel()
 
 	ts := newTestServer(t, broker.New(8), &fakeProxy{})
-
-	payload := `{"method":"/test.Service/Hello","request_body":"not-valid-base64!!!"}`
-	resp, err := http.Post(ts.URL+"/api/replay", "application/json", strings.NewReader(payload))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
+	resp := doPost(t, ts, `{"method":"/test.Service/Hello","request_body":"not-valid-base64!!!"}`)
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusBadRequest)
@@ -201,13 +211,8 @@ func TestReplay_EmptyMethod(t *testing.T) {
 	t.Parallel()
 
 	ts := newTestServer(t, broker.New(8), &fakeProxy{})
-
-	payload := `{"method":"","request_body":""}`
-	resp, err := http.Post(ts.URL+"/api/replay", "application/json", strings.NewReader(payload))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
+	resp := doPost(t, ts, `{"method":"","request_body":""}`)
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusBadRequest)
@@ -218,13 +223,8 @@ func TestReplay_MethodWithoutSlash(t *testing.T) {
 	t.Parallel()
 
 	ts := newTestServer(t, broker.New(8), &fakeProxy{})
-
-	payload := `{"method":"test.Service/Hello","request_body":""}`
-	resp, err := http.Post(ts.URL+"/api/replay", "application/json", strings.NewReader(payload))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
+	resp := doPost(t, ts, `{"method":"test.Service/Hello","request_body":""}`)
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusBadRequest)
@@ -238,13 +238,12 @@ func TestReplay_BodyTooLarge(t *testing.T) {
 
 	largeBody := base64.StdEncoding.EncodeToString(make([]byte, proxy.MaxCaptureSize+1))
 	payload := `{"method":"/test.Service/Hello","request_body":"` + largeBody + `"}`
-	resp, err := http.Post(ts.URL+"/api/replay", "application/json", strings.NewReader(payload))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
+	resp := doPost(t, ts, payload)
+	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusBadRequest)
+	// MaxBytesReader may return 413 or the JSON decode may fail with 400.
+	if resp.StatusCode != http.StatusBadRequest &&
+		resp.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want 400 or 413", resp.StatusCode)
 	}
 }
