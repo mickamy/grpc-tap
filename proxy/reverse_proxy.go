@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -99,11 +100,8 @@ func (rp *ReverseProxy) Replay(ctx context.Context, method string, body []byte) 
 
 	// Wrap body in gRPC length-prefixed frame.
 	frame := make([]byte, 5+len(body))
-	frame[0] = 0 // no compression
-	frame[1] = byte(len(body) >> 24)
-	frame[2] = byte(len(body) >> 16)
-	frame[3] = byte(len(body) >> 8)
-	frame[4] = byte(len(body))
+	frame[0] = 0                                              // no compression
+	binary.BigEndian.PutUint32(frame[1:5], uint32(len(body))) //nolint:gosec // body is bounded by MaxCaptureSize (64KB)
 	copy(frame[5:], body)
 
 	upstreamURL := *rp.upstream

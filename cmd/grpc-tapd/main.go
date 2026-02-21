@@ -9,10 +9,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/mickamy/grpc-tap/broker"
 	"github.com/mickamy/grpc-tap/proxy"
 	"github.com/mickamy/grpc-tap/server"
+	"github.com/mickamy/grpc-tap/web"
 )
 
 var version = "dev"
@@ -27,6 +29,7 @@ func main() {
 	listen := fs.String("listen", "", "client listen address (required)")
 	upstream := fs.String("upstream", "", "upstream gRPC server address (required)")
 	grpcAddr := fs.String("grpc", ":9090", "gRPC server address for TUI")
+	httpAddr := fs.String("http", "", "HTTP server address for web UI (e.g. :8080)")
 	showVersion := fs.Bool("version", false, "show version and exit")
 
 	_ = fs.Parse(os.Args[1:])
@@ -41,12 +44,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := run(*listen, *upstream, *grpcAddr); err != nil {
+	if err := run(*listen, *upstream, *grpcAddr, *httpAddr); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(listen, upstream, grpcAddr string) error {
+func run(listen, upstream, grpcAddr, httpAddr string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -72,6 +75,26 @@ func run(listen, upstream, grpcAddr string) error {
 			log.Printf("grpc serve: %v", err)
 		}
 	}()
+
+	// HTTP server for web UI (optional)
+	if httpAddr != "" {
+		httpLis, err := lc.Listen(ctx, "tcp", httpAddr)
+		if err != nil {
+			return fmt.Errorf("listen http %s: %w", httpAddr, err)
+		}
+		webSrv := web.New(b, p)
+		go func() {
+			log.Printf("HTTP server listening on %s", httpAddr)
+			if err := webSrv.Serve(httpLis); err != nil {
+				log.Printf("http serve: %v", err)
+			}
+		}()
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = webSrv.Shutdown(shutdownCtx)
+		}()
+	}
 
 	go func() {
 		for ev := range p.Events() {

@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -199,4 +200,29 @@ func protocolString(p int32) string {
 	default:
 		return "Unknown"
 	}
+}
+
+func overlayAlert(bg, msg string, width int) string {
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("2")).
+		Padding(0, 2).
+		Render(msg)
+
+	fgLines := strings.Split(box, "\n")
+	bgLines := strings.Split(bg, "\n")
+
+	startY := max((len(bgLines)-len(fgLines))/2, 0)
+	for i, fl := range fgLines {
+		y := startY + i
+		if y >= len(bgLines) {
+			break
+		}
+		fw := lipgloss.Width(fl)
+		pad := max((width-fw)/2, 0)
+		left := ansi.Cut(bgLines[y], 0, pad)
+		right := ansi.Cut(bgLines[y], pad+fw, width)
+		bgLines[y] = left + fl + right
+	}
+	return strings.Join(bgLines, "\n")
 }
