@@ -7,11 +7,38 @@ terminal UI. Inspect requests, view headers, copy bodies, and replay calls — a
 
 ## Installation
 
+### Homebrew
+
+```bash
+brew install mickamy/tap/grpc-tap
+```
+
 ### Go
 
 ```bash
 go install github.com/mickamy/grpc-tap@latest
 go install github.com/mickamy/grpc-tap/cmd/grpc-tapd@latest
+```
+
+### Docker
+
+```dockerfile
+FROM golang:1.25 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o /usr/local/bin/grpc-tapd ./cmd/grpc-tapd
+
+FROM gcr.io/distroless/static-debian12
+COPY --from=build /usr/local/bin/grpc-tapd /usr/local/bin/grpc-tapd
+ENTRYPOINT ["grpc-tapd"]
+```
+
+```bash
+docker build -t grpc-tapd .
+docker run --rm -p 8080:8080 -p 9090:9090 \
+  grpc-tapd -listen=:8080 -upstream=http://host.docker.internal:9000
 ```
 
 ### Build from source
