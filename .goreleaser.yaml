@@ -43,6 +43,7 @@ brews:
     install: |
       bin.install "grpc-tap"
       bin.install "grpc-tapd"
+    directory: Formula
     repository:
       owner: mickamy
       name: homebrew-tap
