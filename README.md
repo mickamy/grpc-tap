@@ -37,7 +37,7 @@ ENTRYPOINT ["grpc-tapd"]
 
 ```bash
 docker build -t grpc-tapd .
-docker run --rm -p 8080:8080 -p 9090:9090 \
+docker run --rm -p 8080:8080 -p 9092:9092 \
   grpc-tapd -listen=:8080 -upstream=http://host.docker.internal:9000
 ```
 
@@ -66,7 +66,7 @@ native gRPC, gRPC-Web, and Connect protocols.
 **3. Launch the TUI**
 
 ```bash
-grpc-tap localhost:9090
+grpc-tap localhost:9092
 ```
 
 All gRPC calls flowing through the proxy appear in real-time.
@@ -84,7 +84,7 @@ Usage:
 Flags:
   -listen    client listen address (required)
   -upstream  upstream gRPC server address (required)
-  -grpc      gRPC server address for TUI (default: ":9090")
+  -grpc      gRPC server address for TUI (default: ":9092")
   -version   show version and exit
 ```
 
@@ -100,7 +100,7 @@ Flags:
   -version  Show version and exit
 ```
 
-`<addr>` is the gRPC address of grpc-tapd (e.g. `localhost:9090`).
+`<addr>` is the gRPC address of grpc-tapd (e.g. `localhost:9092`).
 
 ## Keybindings
 

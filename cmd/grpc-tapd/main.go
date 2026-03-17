@@ -28,7 +28,7 @@ func main() {
 
 	listen := fs.String("listen", "", "client listen address (required)")
 	upstream := fs.String("upstream", "", "upstream gRPC server address (required)")
-	grpcAddr := fs.String("grpc", ":9090", "gRPC server address for TUI")
+	grpcAddr := fs.String("grpc", ":9092", "gRPC server address for TUI")
 	httpAddr := fs.String("http", "", "HTTP server address for web UI (e.g. :8080)")
 	showVersion := fs.Bool("version", false, "show version and exit")
 
